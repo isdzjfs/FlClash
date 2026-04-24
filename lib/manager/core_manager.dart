@@ -77,17 +77,25 @@ class _CoreContainerState extends ConsumerState<CoreManager>
 
   @override
   void onLog(Log log) {
+    var processedLog = log;
+    if (log.payload.contains('[DNS]')) {
+      processedLog = log.copyWith(logLevel: LogLevel.dns);
+    }
     final currentLogLevel = appController.config.patchClashConfig.logLevel;
     if (currentLogLevel == LogLevel.dns) {
-      if (!log.payload.startsWith('[DNS]')) {
+      if (processedLog.logLevel != LogLevel.dns) {
+        return;
+      }
+    } else {
+      if (processedLog.logLevel == LogLevel.dns) {
         return;
       }
     }
-    ref.read(logsProvider.notifier).addLog(log);
-    if (log.logLevel == LogLevel.error) {
-      globalState.showNotifier(log.payload);
+    ref.read(logsProvider.notifier).addLog(processedLog);
+    if (processedLog.logLevel == LogLevel.error) {
+      globalState.showNotifier(processedLog.payload);
     }
-    super.onLog(log);
+    super.onLog(processedLog);
   }
 
   @override

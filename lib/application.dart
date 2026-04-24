@@ -152,9 +152,19 @@ class ApplicationState extends ConsumerState<Application> {
           return;
         }
         if (!isStart) {
-          commonPrint.log('Auto starting VPN: mobile data active, no WiFi');
-          _autoStartedVpn = true;
-          await appController.updateStatus(true);
+          commonPrint.log(
+            'Auto starting VPN: mobile data active, no WiFi. Waiting 1s for stability...',
+          );
+          await Future.delayed(const Duration(seconds: 1));
+          final currentResults = await Connectivity().checkConnectivity();
+          if (currentResults.contains(ConnectivityResult.mobile) &&
+              !currentResults.contains(ConnectivityResult.wifi)) {
+            commonPrint.log('Auto starting VPN: conditions still met, starting now');
+            _autoStartedVpn = true;
+            await appController.updateStatus(true);
+          } else {
+            commonPrint.log('Auto start cancelled: network conditions changed during delay');
+          }
         }
         // If VPN is already on, nothing to do (handles WiFi→Mobile switch correctly)
       } else if (!hasMobile && !hasWifi) {

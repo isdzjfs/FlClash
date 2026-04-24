@@ -190,6 +190,7 @@ class NetworkObserveModule(private val service: Service) : Module() {
         }
         preDnsList = dnsList
         Core.updateDNS(dnsList.toSet().joinToString(","))
+        Core.invokeAction("{\"id\":\"reset-on-network-change\",\"method\":\"resetConnections\",\"data\":null}") {}
         updateUnderlyingNetworks(prioritizedNetworks)
         } catch (e: Exception) {
             com.follow.clash.common.GlobalState.log("applyNetworkUpdate error: ${e.message}")
