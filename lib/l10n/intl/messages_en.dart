@@ -81,6 +81,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "action_tun": MessageLookupByLibrary.simpleMessage("TUN"),
     "action_view": MessageLookupByLibrary.simpleMessage("Show/Hide"),
     "add": MessageLookupByLibrary.simpleMessage("Add"),
+    "addGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "Add Gateway Address",
+    ),
     "addProfile": MessageLookupByLibrary.simpleMessage("Add Profile"),
     "addRule": MessageLookupByLibrary.simpleMessage("Add rule"),
     "addedOriginRules": MessageLookupByLibrary.simpleMessage(
@@ -159,6 +162,21 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage(
       "Auto set system DNS",
+    ),
+    "autoStartOnMobileData": MessageLookupByLibrary.simpleMessage(
+      "Auto start on mobile data",
+    ),
+    "autoStartOnMobileDataDesc": MessageLookupByLibrary.simpleMessage(
+      "Auto start VPN when mobile data is enabled and WiFi is disconnected",
+    ),
+    "autoStopGatewayList": MessageLookupByLibrary.simpleMessage(
+      "Gateway addresses to auto stop",
+    ),
+    "autoStopOnSpecificWifi": MessageLookupByLibrary.simpleMessage(
+      "Auto stop on specific Gateway",
+    ),
+    "autoStopOnSpecificWifiDesc": MessageLookupByLibrary.simpleMessage(
+      "Auto stop VPN when connected to a network with a specific gateway address",
     ),
     "autoUpdate": MessageLookupByLibrary.simpleMessage("Auto update"),
     "autoUpdateInterval": MessageLookupByLibrary.simpleMessage(
@@ -500,6 +518,12 @@ class MessageLookup extends MessageLookupByLibrary {
       "Specify the corresponding nameserver policy",
     ),
     "network": MessageLookupByLibrary.simpleMessage("Network"),
+    "networkAutoControl": MessageLookupByLibrary.simpleMessage(
+      "Network auto control",
+    ),
+    "networkAutoControlDesc": MessageLookupByLibrary.simpleMessage(
+      "Auto control VPN based on network type",
+    ),
     "networkDesc": MessageLookupByLibrary.simpleMessage(
       "Modify network-related settings",
     ),
@@ -581,6 +605,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "paste": MessageLookupByLibrary.simpleMessage("Paste"),
     "pleaseBindWebDAV": MessageLookupByLibrary.simpleMessage(
       "Please bind WebDAV",
+    ),
+    "pleaseEnterGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "Please enter Gateway Address (e.g. 192.168.1.1)",
     ),
     "pleaseEnterScriptName": MessageLookupByLibrary.simpleMessage(
       "Please enter a script name",

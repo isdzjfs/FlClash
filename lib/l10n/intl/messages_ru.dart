@@ -80,6 +80,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "action_tun": MessageLookupByLibrary.simpleMessage("TUN"),
     "action_view": MessageLookupByLibrary.simpleMessage("Показать/Скрыть"),
     "add": MessageLookupByLibrary.simpleMessage("Добавить"),
+    "addGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "Добавить адрес шлюза",
+    ),
     "addProfile": MessageLookupByLibrary.simpleMessage("Добавить профиль"),
     "addRule": MessageLookupByLibrary.simpleMessage("Добавить правило"),
     "addedOriginRules": MessageLookupByLibrary.simpleMessage(
@@ -156,6 +159,21 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage(
       "Автоматическая настройка системного DNS",
+    ),
+    "autoStartOnMobileData": MessageLookupByLibrary.simpleMessage(
+      "Автозапуск при мобильных данных",
+    ),
+    "autoStartOnMobileDataDesc": MessageLookupByLibrary.simpleMessage(
+      "Автоматически запускать VPN при включенных мобильных данных и отключенном WiFi",
+    ),
+    "autoStopGatewayList": MessageLookupByLibrary.simpleMessage(
+      "Списки адресов шлюзов для остановки",
+    ),
+    "autoStopOnSpecificWifi": MessageLookupByLibrary.simpleMessage(
+      "Автоостановка для шлюза",
+    ),
+    "autoStopOnSpecificWifiDesc": MessageLookupByLibrary.simpleMessage(
+      "Автоматически останавливать VPN при подключении к сети с указанным адресом шлюза",
     ),
     "autoUpdate": MessageLookupByLibrary.simpleMessage("Автообновление"),
     "autoUpdateInterval": MessageLookupByLibrary.simpleMessage(
@@ -523,6 +541,12 @@ class MessageLookup extends MessageLookupByLibrary {
       "Указать соответствующую политику сервера имен",
     ),
     "network": MessageLookupByLibrary.simpleMessage("Сеть"),
+    "networkAutoControl": MessageLookupByLibrary.simpleMessage(
+      "Автоуправление сетью",
+    ),
+    "networkAutoControlDesc": MessageLookupByLibrary.simpleMessage(
+      "Автоматическое управление VPN в зависимости от типа сети",
+    ),
     "networkDesc": MessageLookupByLibrary.simpleMessage(
       "Изменение настроек, связанных с сетью",
     ),
@@ -614,6 +638,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "paste": MessageLookupByLibrary.simpleMessage("Вставить"),
     "pleaseBindWebDAV": MessageLookupByLibrary.simpleMessage(
       "Пожалуйста, привяжите WebDAV",
+    ),
+    "pleaseEnterGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "Введите адрес шлюза (например 192.168.1.1)",
     ),
     "pleaseEnterScriptName": MessageLookupByLibrary.simpleMessage(
       "Пожалуйста, введите название скрипта",

@@ -6,6 +6,7 @@ import com.follow.clash.common.QuickAction
 import com.follow.clash.common.action
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
@@ -33,5 +34,10 @@ class TempActivity : Activity(),
             }
         }
         finish()
+    }
+
+    override fun onDestroy() {
+        coroutineContext[Job]?.cancel()
+        super.onDestroy()
     }
 }

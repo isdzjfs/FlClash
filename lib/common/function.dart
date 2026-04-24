@@ -78,6 +78,7 @@ Future<T> retry<T>({
       return res;
     }
     attempts++;
+    await Future.delayed(delay);
   }
   throw 'retry error';
 }

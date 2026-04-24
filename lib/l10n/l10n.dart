@@ -3748,6 +3748,96 @@ class AppLocalizations {
   String get delayTest {
     return Intl.message('Delay Test', name: 'delayTest', desc: '', args: []);
   }
+
+  /// `Auto start on mobile data`
+  String get autoStartOnMobileData {
+    return Intl.message(
+      'Auto start on mobile data',
+      name: 'autoStartOnMobileData',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto start VPN when mobile data is enabled and WiFi is disconnected`
+  String get autoStartOnMobileDataDesc {
+    return Intl.message(
+      'Auto start VPN when mobile data is enabled and WiFi is disconnected',
+      name: 'autoStartOnMobileDataDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto stop on specific Gateway`
+  String get autoStopOnSpecificWifi {
+    return Intl.message(
+      'Auto stop on specific Gateway',
+      name: 'autoStopOnSpecificWifi',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto stop VPN when connected to a network with a specific gateway address`
+  String get autoStopOnSpecificWifiDesc {
+    return Intl.message(
+      'Auto stop VPN when connected to a network with a specific gateway address',
+      name: 'autoStopOnSpecificWifiDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Gateway addresses to auto stop`
+  String get autoStopGatewayList {
+    return Intl.message(
+      'Gateway addresses to auto stop',
+      name: 'autoStopGatewayList',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add Gateway Address`
+  String get addGatewayAddress {
+    return Intl.message(
+      'Add Gateway Address',
+      name: 'addGatewayAddress',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Please enter Gateway Address (e.g. 192.168.1.1)`
+  String get pleaseEnterGatewayAddress {
+    return Intl.message(
+      'Please enter Gateway Address (e.g. 192.168.1.1)',
+      name: 'pleaseEnterGatewayAddress',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Network auto control`
+  String get networkAutoControl {
+    return Intl.message(
+      'Network auto control',
+      name: 'networkAutoControl',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto control VPN based on network type`
+  String get networkAutoControlDesc {
+    return Intl.message(
+      'Auto control VPN based on network type',
+      name: 'networkAutoControlDesc',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {

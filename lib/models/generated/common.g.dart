@@ -123,6 +123,7 @@ const _$LogLevelEnumMap = {
   LogLevel.warning: 'warning',
   LogLevel.error: 'error',
   LogLevel.silent: 'silent',
+  LogLevel.dns: 'dns',
 };
 
 _DAVProps _$DAVPropsFromJson(Map<String, dynamic> json) => _DAVProps(

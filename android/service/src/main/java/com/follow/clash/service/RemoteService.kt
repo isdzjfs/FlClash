@@ -15,6 +15,7 @@ import com.follow.clash.service.models.NotificationParams
 import com.follow.clash.service.models.VpnOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -52,7 +53,10 @@ class RemoteService : Service(),
                 }
                 if (intent != nextIntent) {
                     delegate?.unbind()
-                    delegate = ServiceDelegate(nextIntent, ::handleServiceDisconnected) { binder ->
+                    delegate = ServiceDelegate(
+                        nextIntent,
+                        onServiceDisconnected = ::handleServiceDisconnected
+                    ) { binder ->
                         when (binder) {
                             is VpnService.LocalBinder -> binder.getService()
                             is CommonService.LocalBinder -> binder.getService()
@@ -62,8 +66,20 @@ class RemoteService : Service(),
                     intent = nextIntent
                     delegate?.bind()
                 }
-                delegate?.useService { service ->
+                val startResult = delegate?.useService { service ->
                     service.start()
+                } ?: Result.failure(IllegalStateException("Service delegate not available"))
+                val startSuccess = startResult.getOrElse {
+                    GlobalState.log("Remote service backend start error: $it")
+                    false
+                }
+                if (!startSuccess) {
+                    GlobalState.log(
+                        "Remote service backend did not start for ${nextIntent.component?.className}"
+                    )
+                    State.runTime = 0L
+                    result.onResult(0)
+                    return@launch
                 }
                 State.runTime = when (runTime != 0L) {
                     true -> runTime
@@ -191,6 +207,7 @@ class RemoteService : Service(),
 
     override fun onDestroy() {
         GlobalState.log("Remote service destroy")
+        coroutineContext[Job]?.cancel()
         super.onDestroy()
     }
 }

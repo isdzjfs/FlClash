@@ -92,11 +92,11 @@ class CoreController {
   Future<String> setupConfig({
     required SetupParams params,
     required SetupState setupState,
-    VoidCallback? preloadInvoke,
+    FutureOr<void> Function()? preloadInvoke,
   }) async {
     final res = _interface.setupConfig(params);
     if (preloadInvoke != null) {
-      preloadInvoke();
+      await preloadInvoke();
     }
     return res;
   }
@@ -195,6 +195,10 @@ class CoreController {
   Future<Delay> getDelay(String url, String proxyName) async {
     final data = await _interface.asyncTestDelay(url, proxyName);
     return Delay.fromJson(json.decode(data));
+  }
+
+  Future<void> testGroupDelay(String url, String groupName) async {
+    await _interface.asyncTestGroupDelay(url, groupName);
   }
 
   Future<Map<String, dynamic>> getConfig(int id) async {

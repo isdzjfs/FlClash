@@ -110,7 +110,11 @@ Future<Map<String, dynamic>> _makeRealProfileTask(
   rawConfig['tcp-concurrent'] = realPatchConfig.tcpConcurrent;
   rawConfig['unified-delay'] = realPatchConfig.unifiedDelay;
   rawConfig['ipv6'] = realPatchConfig.ipv6;
-  rawConfig['log-level'] = realPatchConfig.logLevel.name;
+  if (realPatchConfig.logLevel == LogLevel.dns) {
+      rawConfig['log-level'] = 'debug';
+    } else {
+      rawConfig['log-level'] = realPatchConfig.logLevel.name;
+    }
   rawConfig['port'] = 0;
   rawConfig['socks-port'] = 0;
   rawConfig['keep-alive-interval'] = realPatchConfig.keepAliveInterval;

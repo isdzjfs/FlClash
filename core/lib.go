@@ -13,6 +13,12 @@ import (
 	t "core/tun"
 	"encoding/json"
 	"errors"
+	"net"
+	"strings"
+	"sync"
+	"syscall"
+	"unsafe"
+
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/process"
 	"github.com/metacubex/mihomo/constant"
@@ -20,11 +26,6 @@ import (
 	"github.com/metacubex/mihomo/listener/sing_tun"
 	"github.com/metacubex/mihomo/log"
 	"golang.org/x/sync/semaphore"
-	"net"
-	"strings"
-	"sync"
-	"syscall"
-	"unsafe"
 )
 
 var eventListener unsafe.Pointer
@@ -226,7 +227,7 @@ func quickSetup(callback unsafe.Pointer, initParamsChar *C.char, setupParamsChar
 
 //export setEventListener
 func setEventListener(listener unsafe.Pointer) {
-	if eventListener != nil || listener == nil {
+	if eventListener != nil && listener != nil {
 		releaseObject(eventListener)
 	}
 	eventListener = listener

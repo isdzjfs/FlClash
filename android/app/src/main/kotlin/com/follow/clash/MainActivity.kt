@@ -9,6 +9,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
@@ -32,6 +33,7 @@ class MainActivity : FlutterActivity(),
             Service.setEventListener(null)
         }
         State.flutterEngine = null
+        coroutineContext[Job]?.cancel()
         super.onDestroy()
     }
 }

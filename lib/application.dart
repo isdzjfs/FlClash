@@ -27,6 +27,9 @@ class Application extends ConsumerStatefulWidget {
 class ApplicationState extends ConsumerState<Application> {
   Timer? _autoUpdateProfilesTaskTimer;
   bool _preHasVpn = false;
+  // Tracks whether VPN was auto-started by our logic;
+  // only then do we auto-stop it on network change.
+  bool _autoStartedVpn = false;
 
   final _pageTransitionsTheme = const PageTransitionsTheme(
     builders: <TargetPlatform, PageTransitionsBuilder>{
@@ -54,6 +57,7 @@ class ApplicationState extends ConsumerState<Application> {
       } else {
         exit(0);
       }
+      await _syncCurrentConnectivity();
       _autoUpdateProfilesTask();
       appController.initLink();
       app?.initShortcuts();
@@ -82,19 +86,114 @@ class ApplicationState extends ConsumerState<Application> {
     return AppStateManager(
       child: CoreManager(
         child: ConnectivityManager(
-          onConnectivityChanged: (results) async {
-            commonPrint.log('connectivityChanged ${results.toString()}');
-            appController.updateLocalIp();
-            final hasVpn = results.contains(ConnectivityResult.vpn);
-            if (_preHasVpn == hasVpn) {
-              appController.addCheckIp();
-            }
-            _preHasVpn = hasVpn;
-          },
+          onConnectivityChanged: _handleConnectivityChanged,
           child: child,
         ),
       ),
     );
+  }
+
+  Future<void> _syncCurrentConnectivity() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      await _handleConnectivityChanged(results);
+    } catch (e) {
+      commonPrint.log('syncCurrentConnectivity error: $e');
+    }
+  }
+
+  Future<void> _handleConnectivityChanged(
+    List<ConnectivityResult> results,
+  ) async {
+    commonPrint.log('connectivityChanged ${results.toString()}');
+    await appController.updateLocalIp();
+    final hasVpn = results.contains(ConnectivityResult.vpn);
+    if (_preHasVpn == hasVpn) {
+      appController.addCheckIp();
+    }
+    _preHasVpn = hasVpn;
+
+    if (system.isAndroid) {
+      await _handleNetworkAutoControl(results);
+    }
+  }
+
+  Future<void> _handleNetworkAutoControl(
+    List<ConnectivityResult> results,
+  ) async {
+    final appSetting = ref.read(appSettingProvider);
+    final autoStartOnMobile = appSetting.autoStartOnMobileData;
+    final autoStopOnWifi = appSetting.autoStopOnSpecificWifi;
+
+    if (!autoStartOnMobile && !autoStopOnWifi) return;
+
+    final hasMobile = results.contains(ConnectivityResult.mobile);
+    final hasWifi = results.contains(ConnectivityResult.wifi);
+    final isStart = appController.isStart;
+
+    // If VPN was stopped externally/manually, reset the flag
+    if (!isStart) _autoStartedVpn = false;
+
+    // Priority 1: Check if connected to a specific Gateway that should auto-stop VPN
+    if (autoStopOnWifi && hasWifi) {
+      final gatewayList = appSetting.autoStopGatewayList;
+      if (gatewayList.isNotEmpty) {
+        _checkAndStopGateway(gatewayList);
+      }
+    }
+
+    // Priority 2: Auto-start VPN when on mobile only (no WiFi)
+    if (autoStartOnMobile) {
+      if (hasMobile && !hasWifi) {
+        if (appController.disableMobileAutoStartUntilRestart) {
+          commonPrint.log(
+            'Auto start skipped: disabled for this session after manual stop',
+          );
+          return;
+        }
+        if (!isStart) {
+          commonPrint.log('Auto starting VPN: mobile data active, no WiFi');
+          _autoStartedVpn = true;
+          await appController.updateStatus(true);
+        }
+        // If VPN is already on, nothing to do (handles WiFi→Mobile switch correctly)
+      } else if (!hasMobile && !hasWifi) {
+        // No mobile AND no WiFi — only stop VPN if we auto-started it
+        if (isStart && _autoStartedVpn) {
+          commonPrint.log('Auto stopping VPN: no network (we auto-started it)');
+          _autoStartedVpn = false;
+          await appController.updateStatus(false);
+        }
+      }
+    }
+  }
+
+  Future<void> _checkAndStopGateway(List<String> gatewayList) async {
+    for (int i = 0; i < 4; i++) {
+      // Retry up to 4 times for DHCP assignment to complete
+      try {
+        // Use native Android ConnectivityManager — no location permission needed
+        final gatewayIP = await app?.getWifiGatewayIP();
+        if (gatewayIP != null &&
+            gatewayIP.isNotEmpty &&
+            gatewayIP != '0.0.0.0') {
+          if (gatewayList.contains(gatewayIP)) {
+            if (appController.isStart) {
+              commonPrint.log(
+                'Auto stopping VPN: connected to specific Gateway "$gatewayIP"',
+              );
+              await appController.updateStatus(false);
+            }
+          }
+          return; // Successfully resolved, stop retrying
+        }
+      } catch (e) {
+        commonPrint.log(
+          'Failed to get WiFi Gateway IP (native) on retry $i: $e',
+        );
+      }
+      await Future.delayed(const Duration(seconds: 1));
+    }
   }
 
   Widget _buildPlatformApp({required Widget child}) {

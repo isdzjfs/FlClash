@@ -31,6 +31,35 @@ class FilesProvider : DocumentsProvider() {
         )
     }
 
+    private val baseDir: File
+        get() = context?.filesDir ?: throw IllegalStateException("Context not available")
+
+    /**
+     * Resolve a documentId (relative path) to an actual File,
+     * ensuring it stays within baseDir to prevent path traversal.
+     */
+    private fun resolveFile(documentId: String): File {
+        val file = if (documentId == "/") {
+            baseDir
+        } else {
+            File(baseDir, documentId)
+        }
+        val canonical = file.canonicalFile
+        val baseDirCanonical = baseDir.canonicalFile
+        if (!canonical.path.startsWith(baseDirCanonical.path)) {
+            throw SecurityException("Access denied: path traversal detected")
+        }
+        return canonical
+    }
+
+    /**
+     * Convert a File to a documentId (path relative to baseDir).
+     */
+    private fun fileToDocumentId(file: File): String {
+        val relativePath = file.canonicalPath.removePrefix(baseDir.canonicalPath)
+        return if (relativePath.isEmpty()) "/" else relativePath
+    }
+
     override fun onCreate(): Boolean {
         return true
     }
@@ -55,11 +84,8 @@ class FilesProvider : DocumentsProvider() {
         sortOrder: String?
     ): Cursor {
         val result = MatrixCursor(resolveDocumentProjection(projection))
-        val parentFile = if (parentDocumentId == "/") {
-            context?.filesDir
-        } else {
-            File(parentDocumentId)
-        } ?: throw FileNotFoundException("Parent directory not found")
+        val parentFile = resolveFile(parentDocumentId)
+        if (!parentFile.isDirectory) throw FileNotFoundException("Not a directory")
         parentFile.listFiles()?.forEach { file ->
             includeFile(result, file)
         }
@@ -68,7 +94,7 @@ class FilesProvider : DocumentsProvider() {
 
     override fun queryDocument(documentId: String, projection: Array<String>?): Cursor {
         val result = MatrixCursor(resolveDocumentProjection(projection))
-        val file = File(documentId)
+        val file = resolveFile(documentId)
         includeFile(result, file)
         return result
     }
@@ -78,14 +104,15 @@ class FilesProvider : DocumentsProvider() {
         mode: String,
         signal: CancellationSignal?
     ): ParcelFileDescriptor {
-        val file = File(documentId)
+        val file = resolveFile(documentId)
+        if (!file.exists()) throw FileNotFoundException("File not found: $documentId")
         val accessMode = ParcelFileDescriptor.parseMode(mode)
         return ParcelFileDescriptor.open(file, accessMode)
     }
 
     private fun includeFile(result: MatrixCursor, file: File) {
         result.newRow().apply {
-            add(DocumentsContract.Document.COLUMN_DOCUMENT_ID, file.absolutePath)
+            add(DocumentsContract.Document.COLUMN_DOCUMENT_ID, fileToDocumentId(file))
             add(DocumentsContract.Document.COLUMN_DISPLAY_NAME, file.name)
             add(DocumentsContract.Document.COLUMN_SIZE, file.length())
             add(
@@ -107,4 +134,4 @@ class FilesProvider : DocumentsProvider() {
     private fun resolveDocumentProjection(projection: Array<String>?): Array<String> {
         return projection ?: DEFAULT_DOCUMENT_COLUMNS
     }
-}
+}

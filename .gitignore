@@ -68,3 +68,7 @@ devtools_options.yaml
 # FVM Version Cache
 .fvm/
 .fvmrc
+
+# Gradle Caches
+.gradle-user-home/
+.gradle/

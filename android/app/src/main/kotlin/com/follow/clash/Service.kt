@@ -20,13 +20,20 @@ import kotlin.coroutines.resumeWithException
 object Service {
     private val delegate by lazy {
         ServiceDelegate<IRemoteInterface>(
-            RemoteService::class.intent, ::handleServiceDisconnected
+            RemoteService::class.intent,
+            ::handleServiceConnected,
+            ::handleServiceDisconnected,
         ) {
             IRemoteInterface.Stub.asInterface(it)
         }
     }
 
+    var onServiceConnected: (() -> Unit)? = null
     var onServiceDisconnected: ((String) -> Unit)? = null
+
+    private fun handleServiceConnected() {
+        onServiceConnected?.invoke()
+    }
 
     private fun handleServiceDisconnected(message: String) {
         onServiceDisconnected?.let {
@@ -44,7 +51,7 @@ object Service {
 
     suspend fun invokeAction(data: String, cb: ((result: String) -> Unit)?): Result<Unit> {
         val res = mutableListOf<ByteArray>()
-        return delegate.useService {
+        return delegate.useService(timeoutMillis = 1500) {
             it.invokeAction(
                 data, object : ICallbackInterface.Stub() {
                     override fun onResult(
@@ -179,8 +186,8 @@ object Service {
         }.getOrNull() ?: 0L
     }
 
-    suspend fun getRunTime(): Long {
-        return delegate.useService {
+    suspend fun getRunTime(timeoutMillis: Long = 5000): Long {
+        return delegate.useService(timeoutMillis = timeoutMillis) {
             it.runTime
         }.getOrNull() ?: 0L
     }

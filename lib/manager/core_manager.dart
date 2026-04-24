@@ -65,13 +65,24 @@ class _CoreContainerState extends ConsumerState<CoreManager>
   Future<void> onDelay(Delay delay) async {
     super.onDelay(delay);
     appController.setDelay(delay);
-    debouncer.call(FunctionTag.updateDelay, () async {
-      appController.updateGroupsDebounce();
-    }, duration: const Duration(milliseconds: 5000));
+    throttler.call(
+      FunctionTag.updateDelay,
+      () {
+        appController.updateGroupsDebounce(const Duration(milliseconds: 200));
+      },
+      duration: const Duration(milliseconds: 800),
+      fire: true,
+    );
   }
 
   @override
   void onLog(Log log) {
+    final currentLogLevel = appController.config.patchClashConfig.logLevel;
+    if (currentLogLevel == LogLevel.dns) {
+      if (!log.payload.startsWith('[DNS]')) {
+        return;
+      }
+    }
     ref.read(logsProvider.notifier).addLog(log);
     if (log.logLevel == LogLevel.error) {
       globalState.showNotifier(log.payload);
@@ -98,14 +109,16 @@ class _CoreContainerState extends ConsumerState<CoreManager>
 
   @override
   Future<void> onCrash(String message) async {
-    if (ref.read(coreStatusProvider) != CoreStatus.connected) {
+    final currentStatus = ref.read(coreStatusProvider);
+    commonPrint.log(
+      '[CoreManager] onCrash() message="$message", currentStatus=$currentStatus',
+    );
+    final isStart = ref.read(isStartProvider);
+    if (currentStatus != CoreStatus.connected && !isStart) {
+      commonPrint.log('[CoreManager] onCrash() ignored, not connected');
       return;
     }
-    ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
-    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      context.showNotifier(message);
-    }
-    await coreController.shutdown(false);
+    await appController.handleUnexpectedStop(message: message);
     super.onCrash(message);
   }
 }

@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class ServiceDelegate<T>(
     private val intent: Intent,
+    private val onServiceConnected: (() -> Unit)? = null,
     private val onServiceDisconnected: ((String) -> Unit)? = null,
     private val interfaceCreator: (IBinder) -> T,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default) {
@@ -29,13 +30,17 @@ class ServiceDelegate<T>(
     private var job: Job? = null
 
     private fun handleBind(data: Pair<IBinder?, String>) {
-        data.first?.let {
-            _serviceState.value = Pair(interfaceCreator(it), data.second)
-        } ?: run {
-            _serviceState.value = Pair(null, data.second)
-            unbind()
+        val binder = data.first
+        if (binder != null) {
+            _serviceState.value = Pair(interfaceCreator(binder), data.second)
+            onServiceConnected?.invoke()
+        } else {
+            // onServiceDisconnected: the remote process crashed or was killed.
+            // Android will automatically try to rebind, so do NOT unbind here.
+            // Just reset the state so useService will block until reconnected.
+            GlobalState.log("[ServiceDelegate] onServiceDisconnected: ${data.second}, waiting for rebind...")
+            _serviceState.value = null
             onServiceDisconnected?.invoke(data.second)
-            _bindingState.set(false)
         }
     }
 
@@ -54,7 +59,7 @@ class ServiceDelegate<T>(
     }
 
     suspend inline fun <R> useService(
-        timeoutMillis: Long = 5000, crossinline block: suspend (T) -> R
+        timeoutMillis: Long = 15000, crossinline block: suspend (T) -> R
     ): Result<R> {
         return runCatching {
             withTimeout(timeoutMillis) {

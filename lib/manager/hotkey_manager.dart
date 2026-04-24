@@ -33,7 +33,7 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
       case HotAction.mode:
         appController.updateMode();
       case HotAction.start:
-        appController.updateStart();
+        appController.updateStart(isManual: true);
       case HotAction.view:
         appController.updateVisible();
       case HotAction.proxy:

@@ -88,7 +88,7 @@ enum Mode { rule, global, direct }
 
 enum ViewMode { mobile, laptop, desktop }
 
-enum LogLevel { debug, info, warning, error, silent }
+enum LogLevel { debug, info, warning, error, silent, dns }
 
 extension LogLevelExt on LogLevel {
   Color? get color {
@@ -98,6 +98,7 @@ extension LogLevelExt on LogLevel {
       LogLevel.info => null,
       LogLevel.warning => Colors.orangeAccent.darken(),
       LogLevel.error => Colors.redAccent,
+      LogLevel.dns => Colors.lightBlue,
     };
   }
 }
@@ -226,6 +227,7 @@ enum ActionMethod {
   getTotalTraffic,
   resetTraffic,
   asyncTestDelay,
+  asyncTestGroupDelay,
   getConnections,
   closeConnections,
   resetConnections,
@@ -303,6 +305,7 @@ enum DashboardWidget {
     platforms: desktopPlatforms,
   ),
   intranetIp(GridItem(crossAxisCellCount: 4, child: IntranetIP())),
+  currentNode(GridItem(crossAxisCellCount: 4, child: CurrentNode())),
   memoryInfo(GridItem(crossAxisCellCount: 4, child: MemoryInfo()));
 
   final GridItem widget;
@@ -313,7 +316,9 @@ enum DashboardWidget {
   static DashboardWidget getDashboardWidget(GridItem gridItem) {
     final dashboardWidgets = DashboardWidget.values;
     final index = dashboardWidgets.indexWhere(
-      (item) => item.widget == gridItem,
+      (item) =>
+          item.widget == gridItem ||
+          item.widget.child.runtimeType == gridItem.child.runtimeType,
     );
     return dashboardWidgets[index];
   }

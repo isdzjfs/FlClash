@@ -1,0 +1,6 @@
+编译核心加APK
+dart setup.dart android --arch=arm64
+
+
+仅APK
+flutter build apk --release --target-platform android-arm64 --obfuscate --split-debug-info=./debug

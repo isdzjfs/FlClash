@@ -2,6 +2,8 @@ package com.follow.clash.service
 
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.ProxyInfo
 import android.os.Binder
 import android.os.Build
@@ -23,11 +25,13 @@ import com.follow.clash.service.modules.SuspendModule
 import com.follow.clash.service.modules.moduleLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import java.net.InetSocketAddress
 import android.net.VpnService as SystemVpnService
 
 class VpnService : SystemVpnService(), IBaseService,
-    CoroutineScope by CoroutineScope(Dispatchers.Default) {
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default) {
 
     private val self: VpnService
         get() = this
@@ -45,13 +49,19 @@ class VpnService : SystemVpnService(), IBaseService,
 
     override fun onDestroy() {
         handleDestroy()
+        coroutineContext[Job]?.cancel()
         super.onDestroy()
     }
 
     private val connectivity by lazy {
         getSystemService<ConnectivityManager>()
     }
-    private val uidPageNameMap = mutableMapOf<Int, String>()
+        private val uidPageNameMap = object : LinkedHashMap<Int, String>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, String>): Boolean {
+            return size > 256
+        }
+    }
+    private val uidPageNameMapLock = Any()
 
     private fun resolverProcess(
         protocol: Int,
@@ -67,10 +77,12 @@ class VpnService : SystemVpnService(), IBaseService,
         if (nextUid == -1) {
             return ""
         }
-        if (!uidPageNameMap.containsKey(nextUid)) {
-            uidPageNameMap[nextUid] = this.packageManager?.getPackagesForUid(nextUid)?.first() ?: ""
+        synchronized(uidPageNameMapLock) {
+            if (!uidPageNameMap.containsKey(nextUid)) {
+                uidPageNameMap[nextUid] = this.packageManager?.getPackagesForUid(nextUid)?.firstOrNull() ?: ""
+            }
+            return uidPageNameMap[nextUid] ?: ""
         }
-        return uidPageNameMap[nextUid] ?: ""
     }
 
     val VpnOptions.address
@@ -122,8 +134,48 @@ class VpnService : SystemVpnService(), IBaseService,
         }
     }
 
-    override fun onBind(intent: Intent): IBinder {
+    override fun onBind(intent: Intent): IBinder? {
+        if (intent.action == android.net.VpnService.SERVICE_INTERFACE) {
+            return super.onBind(intent)
+        }
         return binder
+    }
+
+    private fun networkPriority(network: Network): Int {
+        val capabilities = connectivity?.getNetworkCapabilities(network) ?: return 100
+        val linkProperties = connectivity?.getLinkProperties(network)
+        if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        ) {
+            return 100
+        }
+        return when {
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> 0
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> 1
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_USB) -> 2
+
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> 3
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> 4
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM &&
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE) -> 5
+
+            else -> 20
+        } +
+            (if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) 0 else 10) +
+            (if (linkProperties?.dnsServers.isNullOrEmpty()) 20 else 0)
+    }
+
+    private fun calculateTunMtu(options: VpnOptions): Int {
+        val bestNetwork = connectivity?.allNetworks
+            ?.filter { networkPriority(it) < 100 }
+            ?.minByOrNull(::networkPriority)
+        val underlyingMtu = bestNetwork
+            ?.let { network -> connectivity?.getLinkProperties(network)?.mtu }
+            ?.takeIf { it > 0 }
+            ?: DEFAULT_UNDERLYING_MTU
+        val overhead = if (options.ipv6) IPV6_TUN_OVERHEAD else IPV4_TUN_OVERHEAD
+        return (underlyingMtu - overhead).coerceIn(MIN_TUN_MTU, MAX_TUN_MTU)
     }
 
     private fun handleStart(options: VpnOptions) {
@@ -186,19 +238,27 @@ class VpnService : SystemVpnService(), IBaseService,
             if (options.ipv6) {
                 addDnsServer(DNS6)
             }
-            setMtu(9000)
+            setMtu(calculateTunMtu(options))
             options.accessControlProps.let { accessControl ->
                 if (accessControl.enable) {
                     when (accessControl.mode) {
                         AccessControlMode.ACCEPT_SELECTED -> {
                             (accessControl.acceptList + packageName).forEach {
-                                addAllowedApplication(it)
+                                try {
+                                    addAllowedApplication(it)
+                                } catch (_: Exception) {
+                                    GlobalState.log("addAllowedApplication skip: $it")
+                                }
                             }
                         }
 
                         AccessControlMode.REJECT_SELECTED -> {
                             (accessControl.rejectList - packageName).forEach {
-                                addDisallowedApplication(it)
+                                try {
+                                    addDisallowedApplication(it)
+                                } catch (_: Exception) {
+                                    GlobalState.log("addDisallowedApplication skip: $it")
+                                }
                             }
                         }
                     }
@@ -233,14 +293,17 @@ class VpnService : SystemVpnService(), IBaseService,
         )
     }
 
-    override fun start() {
-        try {
+    override fun start(): Boolean {
+        return try {
             loader.load()
             State.options?.let {
                 handleStart(it)
             }
-        } catch (_: Exception) {
+            true
+        } catch (e: Exception) {
+            GlobalState.log("[VpnService] start failed: $e")
             stop()
+            false
         }
     }
 
@@ -257,5 +320,10 @@ class VpnService : SystemVpnService(), IBaseService,
         private const val DNS6 = "fdfe:dcba:9876::2"
         private const val NET_ANY = "0.0.0.0"
         private const val NET_ANY6 = "::"
+        private const val DEFAULT_UNDERLYING_MTU = 1500
+        private const val MIN_TUN_MTU = 1280
+        private const val MAX_TUN_MTU = 1400
+        private const val IPV4_TUN_OVERHEAD = 80
+        private const val IPV6_TUN_OVERHEAD = 100
     }
 }

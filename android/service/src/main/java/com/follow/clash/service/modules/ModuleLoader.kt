@@ -17,10 +17,10 @@ interface ModuleLoader {
     fun cancel()
 }
 
-private val mutex = Mutex()
 fun CoroutineScope.moduleLoader(block: suspend ModuleLoaderScope.() -> Unit): ModuleLoader {
     val modules = mutableListOf<Module>()
     var job: Job? = null
+    val mutex = Mutex()
 
     return object : ModuleLoader {
         override fun load() {

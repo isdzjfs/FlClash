@@ -477,5 +477,14 @@
   "restoreOnlyConfig": "設定ファイルのみを復元する",
   "restoreAllData": "すべてのデータを復元する",
   "addProfile": "プロファイルを追加",
-  "delayTest": "遅延テスト"
+  "delayTest": "遅延テスト",
+  "autoStartOnMobileData": "モバイルデータ通信時に自動起動",
+  "autoStartOnMobileDataDesc": "モバイルデータ通信が有効でWiFiが切断されている場合、VPNを自動起動する",
+  "autoStopOnSpecificWifi": "特定のゲートウェイで自動停止",
+  "autoStopOnSpecificWifiDesc": "特定のゲートウェイアドレスに接続した場合、VPNを自動停止する",
+  "autoStopGatewayList": "自動停止するゲートウェイリスト",
+  "addGatewayAddress": "ゲートウェイアドレスを追加",
+  "pleaseEnterGatewayAddress": "ゲートウェイアドレスを入力してください (例: 192.168.1.1)",
+  "networkAutoControl": "ネットワーク自動制御",
+  "networkAutoControlDesc": "ネットワーク種別に基づいてVPNを自動制御"
 }

@@ -44,16 +44,28 @@ const List<DashboardWidget> defaultDashboardWidgets = [
   DashboardWidget.networkDetection,
   DashboardWidget.trafficUsage,
   DashboardWidget.intranetIp,
+  DashboardWidget.currentNode,
 ];
+
+List<DashboardWidget> _insertCurrentNodeIfAbsent(List<DashboardWidget> widgets) {
+  if (widgets.contains(DashboardWidget.currentNode)) {
+    return widgets;
+  }
+  final newWidgets = List<DashboardWidget>.from(widgets);
+  final intranetIndex = newWidgets.indexOf(DashboardWidget.intranetIp);
+  final insertIndex = intranetIndex == -1 ? newWidgets.length : intranetIndex + 1;
+  newWidgets.insert(insertIndex, DashboardWidget.currentNode);
+  return newWidgets;
+}
 
 List<DashboardWidget> dashboardWidgetsSafeFormJson(
   List<dynamic>? dashboardWidgets,
 ) {
   try {
-    return dashboardWidgets
-            ?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
-            .toList() ??
+    final widgets =
+        dashboardWidgets?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e)).toList() ??
         defaultDashboardWidgets;
+    return _insertCurrentNodeIfAbsent(widgets);
   } catch (_) {
     return defaultDashboardWidgets;
   }
@@ -84,6 +96,9 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(false) bool developerMode,
     @Default(RestoreStrategy.compatible) RestoreStrategy restoreStrategy,
     @Default(true) bool showTrayTitle,
+    @Default(false) bool autoStartOnMobileData,
+    @Default(false) bool autoStopOnSpecificWifi,
+    @Default([]) List<String> autoStopGatewayList,
   }) = _AppSettingProps;
 
   factory AppSettingProps.fromJson(Map<String, Object?> json) =>

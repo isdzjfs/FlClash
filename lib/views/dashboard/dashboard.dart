@@ -10,6 +10,7 @@ import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'widgets/current_node.dart';
 import 'widgets/start_button.dart';
 
 typedef _IsEditWidgetBuilder = Widget Function(bool isEdit);
@@ -25,6 +26,64 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
   final key = GlobalKey<SuperGridState>();
   final _isEditNotifier = ValueNotifier<bool>(false);
   final _addedWidgetsNotifier = ValueNotifier<List<GridItem>>([]);
+
+  double _measureTextWidth(
+    BuildContext context,
+    String text,
+    TextStyle? style,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    )..layout();
+    return painter.width;
+  }
+
+  GridItem _buildGridItem(
+    BuildContext context,
+    DashboardWidget dashboardWidget,
+    int columns,
+    double contentWidth,
+    double spacing,
+  ) {
+    if (dashboardWidget != DashboardWidget.currentNode) {
+      return dashboardWidget.widget;
+    }
+    final cardData = CurrentNode.resolveCardData(ref);
+    final titleWidth = _measureTextWidth(
+      context,
+      cardData.groupName,
+      context.textTheme.titleSmall,
+    );
+    final contentTextStyle = context.textTheme.bodyMedium?.toLight.adjustSize(
+      1,
+    );
+    final nodeWidth = _measureTextWidth(
+      context,
+      cardData.nodeName,
+      contentTextStyle,
+    );
+    final requiredWidth = max(titleWidth + 72, nodeWidth + 36);
+    final availableWidth = max(contentWidth - 32, 0.0);
+    final stride = (availableWidth + spacing) / columns;
+
+    int resolveSpan(int span) => min(span, columns);
+    final fourSpanWidth = stride * resolveSpan(4) - spacing;
+    final sixSpanWidth = stride * resolveSpan(6) - spacing;
+
+    final crossAxisCellCount = switch (columns) {
+      <= 4 => columns,
+      _ when requiredWidth <= fourSpanWidth => resolveSpan(4),
+      _ when requiredWidth <= sixSpanWidth => resolveSpan(6),
+      _ => resolveSpan(8),
+    };
+
+    return GridItem(
+      crossAxisCellCount: crossAxisCellCount,
+      child: dashboardWidget.widget.child,
+    );
+  }
 
   @override
   dispose() {
@@ -229,18 +288,27 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
     final dashboardState = ref.watch(dashboardStateProvider);
     final columns = max(4 * ((dashboardState.contentWidth / 280).ceil()), 8);
     final spacing = 14.mAp;
-    final children = [
-      ...dashboardState.dashboardWidgets
-          .where(
-            (item) => item.platforms.contains(SupportPlatform.currentPlatform),
-          )
-          .map((item) => item.widget),
-    ];
+    final currentDashboardWidgets = dashboardState.dashboardWidgets
+        .where(
+          (item) => item.platforms.contains(SupportPlatform.currentPlatform),
+        )
+        .toList();
+    final children = currentDashboardWidgets
+        .map(
+          (item) => _buildGridItem(
+            context,
+            item,
+            columns,
+            dashboardState.contentWidth,
+            spacing,
+          ),
+        )
+        .toList();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _addedWidgetsNotifier.value = DashboardWidget.values
           .where(
             (item) =>
-                !children.contains(item.widget) &&
+                !currentDashboardWidgets.contains(item) &&
                 item.platforms.contains(SupportPlatform.currentPlatform),
           )
           .map((item) => item.widget)
@@ -263,15 +331,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                         crossAxisCount: columns,
                         crossAxisSpacing: spacing,
                         mainAxisSpacing: spacing,
-                        children: [
-                          ...dashboardState.dashboardWidgets
-                              .where(
-                                (item) => item.platforms.contains(
-                                  SupportPlatform.currentPlatform,
-                                ),
-                              )
-                              .map((item) => item.widget),
-                        ],
+                        children: children,
                         onUpdate: () {
                           _handleSave();
                         },

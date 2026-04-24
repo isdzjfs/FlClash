@@ -56,6 +56,12 @@ type TestDelayParams struct {
 	Timeout   int64  `json:"timeout"`
 }
 
+type GroupTestDelayParams struct {
+	GroupName string `json:"group-name"`
+	TestUrl   string `json:"test-url"`
+	Timeout   int64  `json:"timeout"`
+}
+
 type ExternalProvider struct {
 	Name             string                     `json:"name"`
 	Type             string                     `json:"type"`
@@ -85,6 +91,7 @@ const (
 	getTotalTrafficMethod          Method = "getTotalTraffic"
 	resetTrafficMethod             Method = "resetTraffic"
 	asyncTestDelayMethod           Method = "asyncTestDelay"
+	asyncTestGroupDelayMethod      Method = "asyncTestGroupDelay"
 	getConnectionsMethod           Method = "getConnections"
 	closeConnectionsMethod         Method = "closeConnections"
 	resetConnectionsMethod         Method = "resetConnectionsMethod"

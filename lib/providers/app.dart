@@ -355,15 +355,14 @@ class NetworkDetection extends _$NetworkDetection
     _preIsStart = isStart;
     final res = await request.checkIp(cancelToken: _cancelToken);
     commonPrint.log('checkIp res: $res');
-    if (res.isError && runTime > _startMillisecondsEpoch) {
-      state = state.copyWith(isLoading: true, ipInfo: null);
+    if (runTime <= _startMillisecondsEpoch) {
       return;
     }
-    final ipInfo = res.data;
-    if (ipInfo == null) {
+    if (res.isError) {
+      state = state.copyWith(isLoading: false, ipInfo: null);
       return;
     }
-    state = state.copyWith(isLoading: false, ipInfo: ipInfo);
+    state = state.copyWith(isLoading: false, ipInfo: res.data);
   }
 }
 

@@ -9,6 +9,7 @@ import com.follow.clash.core.Core
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -30,14 +31,6 @@ class SuspendModule(private val service: Service) : Module() {
             return service.getSystemService<PowerManager>()?.isDeviceIdleMode ?: true
         }
 
-    private fun onUpdate(isScreenOn: Boolean) {
-        if (isScreenOn) {
-            Core.suspended(false)
-            return
-        }
-        Core.suspended(isDeviceIdleMode)
-    }
-
     override fun onInstall() {
         scope.launch {
             val screenFlow = service.receiveBroadcastFlow {
@@ -49,9 +42,19 @@ class SuspendModule(private val service: Service) : Module() {
                 emit(isScreenOn())
             }
 
-            screenFlow.collect {
-                    onUpdate(it)
-                }
+            val idleModeFlow = service.receiveBroadcastFlow {
+                addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+            }.map {
+                service.getSystemService<PowerManager>()?.isDeviceIdleMode ?: false
+            }.onStart {
+                emit(isDeviceIdleMode)
+            }
+
+            combine(screenFlow, idleModeFlow) { screenOn, idleMode ->
+                if (screenOn) false else idleMode
+            }.collect { suspended ->
+                Core.suspended(suspended)
+            }
         }
     }
 

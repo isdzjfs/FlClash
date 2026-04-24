@@ -4,11 +4,19 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"net"
+	"os"
+	"runtime"
+	"runtime/debug"
+	"strconv"
+	"time"
+
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/observable"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/mmdb"
+	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/component/updater"
 	"github.com/metacubex/mihomo/config"
@@ -21,12 +29,6 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 	"golang.org/x/exp/slices"
-	"net"
-	"os"
-	"runtime"
-	"runtime/debug"
-	"strconv"
-	"time"
 )
 
 var (
@@ -72,7 +74,7 @@ func handleGetIsInit() bool {
 }
 
 func handleForceGC() {
-	log.Infoln("[APP] request force GC")
+	log.Debugln("[APP] request force GC")
 	runtime.GC()
 	if features.Android {
 		debug.FreeOSMemory()
@@ -265,6 +267,71 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 		delayData.Value = int32(delay)
 		data, _ := json.Marshal(delayData)
 		fn(string(data))
+		return false, nil
+	})
+}
+
+func handleAsyncTestGroupDelay(paramsString string, fn func(string)) {
+	mBatch.Go(paramsString, func() (bool, error) {
+		var params = &GroupTestDelayParams{}
+		err := json.Unmarshal([]byte(paramsString), params)
+		if err != nil {
+			fn(err.Error())
+			return false, nil
+		}
+
+		expectedStatus, err := utils.NewUnsignedRanges[uint16]("")
+		if err != nil {
+			fn(err.Error())
+			return false, nil
+		}
+
+		proxies := tunnel.ProxiesWithProviders()
+		proxy, ok := proxies[params.GroupName]
+		if !ok || proxy == nil {
+			fn("group not found")
+			return false, nil
+		}
+
+		group, ok := proxy.Adapter().(outboundgroup.ProxyGroup)
+		if !ok {
+			fn("group is not proxy-group")
+			return false, nil
+		}
+
+		if selectable, ok := proxy.Adapter().(outboundgroup.SelectAble); ok &&
+			proxy.Type() != constant.Selector {
+			selectable.ForceSet("")
+			cachefile.Cache().SetSelected(proxy.Name(), "")
+		}
+
+		// Prefer the group's own yaml-configured timeout over the Dart-side default
+		timeoutMs := params.Timeout
+		type testTimeoutProvider interface{ GetTestTimeout() int }
+		if ttp, ok := proxy.Adapter().(testTimeoutProvider); ok {
+			if t := ttp.GetTestTimeout(); t > 0 {
+				timeoutMs = int64(t)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Millisecond*time.Duration(timeoutMs),
+		)
+		defer cancel()
+
+		testURL := constant.DefaultTestURL
+		if params.TestUrl != "" {
+			testURL = params.TestUrl
+		}
+
+		_, err = group.URLTest(ctx, testURL, expectedStatus)
+		if err != nil {
+			fn(err.Error())
+			return false, nil
+		}
+
+		fn("")
 		return false, nil
 	})
 }

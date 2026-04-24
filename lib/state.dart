@@ -28,9 +28,13 @@ import 'models/models.dart';
 typedef UpdateTasks = List<FutureOr Function()>;
 
 class GlobalState {
+  static const serviceStartupGraceDuration = Duration(seconds: 5);
+  static const serviceHealthFailureThreshold = 2;
   static GlobalState? _instance;
   final navigatorKey = GlobalKey<NavigatorState>();
   Timer? timer;
+  bool _isExecutingUpdateTasks = false;
+  bool _updateTasksEnabled = false;
   bool isPre = true;
   late final String coreSHA256;
   late final PackageInfo packageInfo;
@@ -41,11 +45,20 @@ class GlobalState {
   bool needInitStatus = true;
   CorePalette? corePalette;
   DateTime? startTime;
+  DateTime? _serviceStartRequestedAt;
+  int _runTimeFailureCount = 0;
+  int _trafficFailureCount = 0;
+  bool _hasSuccessfulRuntimeSync = false;
   UpdateTasks tasks = [];
   SetupState? lastSetupState;
   VpnState? lastVpnState;
 
   bool get isStart => startTime != null && startTime!.isBeforeNow;
+  bool get isWithinServiceStartupGrace =>
+      _serviceStartRequestedAt != null &&
+      DateTime.now().difference(_serviceStartRequestedAt!) <
+          serviceStartupGraceDuration;
+  bool get hasSuccessfulRuntimeSync => _hasSuccessfulRuntimeSync;
 
   GlobalState._internal();
 
@@ -111,45 +124,118 @@ class GlobalState {
   }
 
   Future<void> startUpdateTasks([UpdateTasks? tasks]) async {
-    if (timer != null && timer!.isActive == true) return;
     if (tasks != null) {
       this.tasks = tasks;
     }
     if (this.tasks.isEmpty) {
       return;
     }
-    await executorUpdateTask();
+    _updateTasksEnabled = true;
+    if (timer?.isActive == true || _isExecutingUpdateTasks) return;
+    _isExecutingUpdateTasks = true;
+    try {
+      await executorUpdateTask();
+    } finally {
+      _isExecutingUpdateTasks = false;
+    }
+    if (!_updateTasksEnabled || this.tasks.isEmpty || timer?.isActive == true) {
+      return;
+    }
     timer = Timer(const Duration(seconds: 1), () async {
       startUpdateTasks();
     });
   }
 
   Future<void> executorUpdateTask() async {
-    for (final task in tasks) {
-      await task();
-    }
     timer = null;
+    for (final task in tasks) {
+      if (!_updateTasksEnabled) {
+        break;
+      }
+      try {
+        await task();
+      } catch (e, s) {
+        commonPrint.log('Update task error: $e, $s');
+      }
+    }
   }
 
   void stopUpdateTasks() {
+    _updateTasksEnabled = false;
     if (timer == null || timer?.isActive == false) return;
     timer?.cancel();
     timer = null;
   }
 
-  Future<void> handleStart([UpdateTasks? tasks]) async {
-    startTime ??= DateTime.now();
+  void markServiceStartRequested() {
+    _serviceStartRequestedAt = DateTime.now();
+    _runTimeFailureCount = 0;
+    _trafficFailureCount = 0;
+    _hasSuccessfulRuntimeSync = false;
+  }
+
+  void markRuntimeSyncSuccess() {
+    _runTimeFailureCount = 0;
+    _hasSuccessfulRuntimeSync = true;
+  }
+
+  void markTrafficSyncSuccess() {
+    _trafficFailureCount = 0;
+  }
+
+  bool registerRuntimeSyncFailure() {
+    _runTimeFailureCount += 1;
+    if (isWithinServiceStartupGrace) {
+      return false;
+    }
+    return _runTimeFailureCount >= serviceHealthFailureThreshold;
+  }
+
+  bool registerTrafficSyncFailure() {
+    _trafficFailureCount += 1;
+    if (!_hasSuccessfulRuntimeSync || isWithinServiceStartupGrace) {
+      return false;
+    }
+    return _trafficFailureCount >= serviceHealthFailureThreshold;
+  }
+
+  void resetServiceHealthTracking() {
+    _serviceStartRequestedAt = null;
+    _runTimeFailureCount = 0;
+    _trafficFailureCount = 0;
+    _hasSuccessfulRuntimeSync = false;
+  }
+
+  Future<bool> handleStart([UpdateTasks? tasks]) async {
     await coreController.startListener();
-    await service?.start();
+    final started = await service?.start() ?? true;
+    if (!started) {
+      startTime = null;
+      resetServiceHealthTracking();
+      await coreController.stopListener();
+      stopUpdateTasks();
+      return false;
+    }
+    markServiceStartRequested();
+    final serviceStartTime = await service?.getRunTime();
+    startTime = serviceStartTime ?? DateTime.now();
+    if (serviceStartTime != null) {
+      markRuntimeSyncSuccess();
+    }
     startUpdateTasks(tasks);
+    return true;
   }
 
   Future updateStartTime() async {
     startTime = await service?.getRunTime();
+    if (startTime != null) {
+      markRuntimeSyncSuccess();
+    }
   }
 
   Future handleStop() async {
     startTime = null;
+    resetServiceHealthTracking();
     await coreController.stopListener();
     await service?.stop();
     stopUpdateTasks();

@@ -35,6 +35,13 @@ _AppSettingProps _$AppSettingPropsFromJson(Map<String, dynamic> json) =>
           ) ??
           RestoreStrategy.compatible,
       showTrayTitle: json['showTrayTitle'] as bool? ?? true,
+      autoStartOnMobileData: json['autoStartOnMobileData'] as bool? ?? false,
+      autoStopOnSpecificWifi: json['autoStopOnSpecificWifi'] as bool? ?? false,
+      autoStopGatewayList:
+          (json['autoStopGatewayList'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
@@ -61,6 +68,9 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
       'developerMode': instance.developerMode,
       'restoreStrategy': _$RestoreStrategyEnumMap[instance.restoreStrategy]!,
       'showTrayTitle': instance.showTrayTitle,
+      'autoStartOnMobileData': instance.autoStartOnMobileData,
+      'autoStopOnSpecificWifi': instance.autoStopOnSpecificWifi,
+      'autoStopGatewayList': instance.autoStopGatewayList,
     };
 
 const _$RestoreStrategyEnumMap = {
@@ -78,6 +88,7 @@ const _$DashboardWidgetEnumMap = {
   DashboardWidget.vpnButton: 'vpnButton',
   DashboardWidget.systemProxyButton: 'systemProxyButton',
   DashboardWidget.intranetIp: 'intranetIp',
+  DashboardWidget.currentNode: 'currentNode',
   DashboardWidget.memoryInfo: 'memoryInfo',
 };
 

@@ -477,5 +477,14 @@
   "restoreOnlyConfig": "仅恢复配置文件",
   "restoreAllData": "恢复所有数据",
   "addProfile": "添加配置",
-  "delayTest": "延迟测试"
+  "delayTest": "延迟测试",
+  "autoStartOnMobileData": "移动数据自动开启",
+  "autoStartOnMobileDataDesc": "打开移动数据且未连接 WiFi 时自动启动 VPN 代理",
+  "autoStopOnSpecificWifi": "特定网关自动断开",
+  "autoStopOnSpecificWifiDesc": "连接到指定网关地址的网络后自动关闭 VPN 代理",
+  "autoStopGatewayList": "自动断开的网关列表",
+  "addGatewayAddress": "添加网关地址",
+  "pleaseEnterGatewayAddress": "请输入网关地址 (如 192.168.1.1)",
+  "networkAutoControl": "网络自动控制",
+  "networkAutoControlDesc": "根据网络类型自动控制VPN"
 }

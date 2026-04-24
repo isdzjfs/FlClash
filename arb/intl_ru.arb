@@ -485,5 +485,14 @@
   "restoreOnlyConfig": "Восстановить только файлы конфигурации",
   "restoreAllData": "Восстановить все данные",
   "addProfile": "Добавить профиль",
-  "delayTest": "Тест задержки"
+  "delayTest": "Тест задержки",
+  "autoStartOnMobileData": "Автозапуск при мобильных данных",
+  "autoStartOnMobileDataDesc": "Автоматически запускать VPN при включенных мобильных данных и отключенном WiFi",
+  "autoStopOnSpecificWifi": "Автоостановка для шлюза",
+  "autoStopOnSpecificWifiDesc": "Автоматически останавливать VPN при подключении к сети с указанным адресом шлюза",
+  "autoStopGatewayList": "Списки адресов шлюзов для остановки",
+  "addGatewayAddress": "Добавить адрес шлюза",
+  "pleaseEnterGatewayAddress": "Введите адрес шлюза (например 192.168.1.1)",
+  "networkAutoControl": "Автоуправление сетью",
+  "networkAutoControlDesc": "Автоматическое управление VPN в зависимости от типа сети"
 }

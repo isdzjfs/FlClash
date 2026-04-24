@@ -47,6 +47,8 @@ class NotificationModule(private val service: Service) : Module() {
     private val scope = CoroutineScope(Dispatchers.Default)
 
     override fun onInstall() {
+        // Immediately start foreground notification to satisfy Android requirements
+        update((State.notificationParamsFlow.value ?: NotificationParams()).extended)
         scope.launch {
             val screenFlow = service.receiveBroadcastFlow {
                 addAction(Intent.ACTION_SCREEN_ON)
@@ -58,7 +60,7 @@ class NotificationModule(private val service: Service) : Module() {
             }
 
             combine(
-                tickerFlow(1000, 0), State.notificationParamsFlow, screenFlow
+                tickerFlow(3000, 0), State.notificationParamsFlow, screenFlow
             ) { _, params, screenOn ->
                 params?.extended to screenOn
             }.filter { (params, screenOn) -> params != null && screenOn }
@@ -66,12 +68,6 @@ class NotificationModule(private val service: Service) : Module() {
                 .collect { (params, _) ->
                     update(params!!)
                 }
-
-            State.notificationParamsFlow.value?.let {
-                update(it.extended)
-            } ?: run {
-                update(NotificationParams().extended)
-            }
         }
     }
 

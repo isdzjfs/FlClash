@@ -72,6 +72,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "action_tun": MessageLookupByLibrary.simpleMessage("TUN"),
     "action_view": MessageLookupByLibrary.simpleMessage("表示/非表示"),
     "add": MessageLookupByLibrary.simpleMessage("追加"),
+    "addGatewayAddress": MessageLookupByLibrary.simpleMessage("ゲートウェイアドレスを追加"),
     "addProfile": MessageLookupByLibrary.simpleMessage("プロファイルを追加"),
     "addRule": MessageLookupByLibrary.simpleMessage("ルールを追加"),
     "addedOriginRules": MessageLookupByLibrary.simpleMessage("元のルールに追加"),
@@ -115,6 +116,21 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoRun": MessageLookupByLibrary.simpleMessage("自動実行"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage("アプリ起動時に自動実行"),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage("オートセットシステムDNS"),
+    "autoStartOnMobileData": MessageLookupByLibrary.simpleMessage(
+      "モバイルデータ通信時に自動起動",
+    ),
+    "autoStartOnMobileDataDesc": MessageLookupByLibrary.simpleMessage(
+      "モバイルデータ通信が有効でWiFiが切断されている場合、VPNを自動起動する",
+    ),
+    "autoStopGatewayList": MessageLookupByLibrary.simpleMessage(
+      "自動停止するゲートウェイリスト",
+    ),
+    "autoStopOnSpecificWifi": MessageLookupByLibrary.simpleMessage(
+      "特定のゲートウェイで自動停止",
+    ),
+    "autoStopOnSpecificWifiDesc": MessageLookupByLibrary.simpleMessage(
+      "特定のゲートウェイアドレスに接続した場合、VPNを自動停止する",
+    ),
     "autoUpdate": MessageLookupByLibrary.simpleMessage("自動更新"),
     "autoUpdateInterval": MessageLookupByLibrary.simpleMessage("自動更新間隔（分）"),
     "backup": MessageLookupByLibrary.simpleMessage("バックアップ"),
@@ -375,6 +391,10 @@ class MessageLookup extends MessageLookupByLibrary {
       "対応するネームサーバーポリシーを指定",
     ),
     "network": MessageLookupByLibrary.simpleMessage("ネットワーク"),
+    "networkAutoControl": MessageLookupByLibrary.simpleMessage("ネットワーク自動制御"),
+    "networkAutoControlDesc": MessageLookupByLibrary.simpleMessage(
+      "ネットワーク種別に基づいてVPNを自動制御",
+    ),
     "networkDesc": MessageLookupByLibrary.simpleMessage("ネットワーク関連設定の変更"),
     "networkDetection": MessageLookupByLibrary.simpleMessage("ネットワーク検出"),
     "networkException": MessageLookupByLibrary.simpleMessage(
@@ -440,6 +460,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "paste": MessageLookupByLibrary.simpleMessage("貼り付け"),
     "pleaseBindWebDAV": MessageLookupByLibrary.simpleMessage(
       "WebDAVをバインドしてください",
+    ),
+    "pleaseEnterGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "ゲートウェイアドレスを入力してください (例: 192.168.1.1)",
     ),
     "pleaseEnterScriptName": MessageLookupByLibrary.simpleMessage(
       "スクリプト名を入力してください",

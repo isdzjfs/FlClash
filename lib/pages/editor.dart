@@ -576,9 +576,30 @@ class ContextMenuControllerImpl implements SelectionToolbarController {
               _removeOverLayEntry();
               return SizedBox();
             }
+
+            final padding = MediaQuery.of(context).padding;
+            final minDy = padding.top + kToolbarHeight + 48;
+            final minDx = 120.0;
+
+            var primaryAnchor = anchors.primaryAnchor;
+            if (primaryAnchor.dy < minDy) {
+              primaryAnchor = Offset(primaryAnchor.dx, minDy);
+            }
+            if (primaryAnchor.dx < minDx) {
+              primaryAnchor = Offset(minDx, primaryAnchor.dy);
+            }
+
+            var secondaryAnchor = anchors.secondaryAnchor ?? primaryAnchor;
+            if (secondaryAnchor.dy < minDy) {
+              secondaryAnchor = Offset(secondaryAnchor.dx, minDy);
+            }
+            if (secondaryAnchor.dx < minDx) {
+              secondaryAnchor = Offset(minDx, secondaryAnchor.dy);
+            }
+
             return TextSelectionToolbar(
-              anchorAbove: anchors.primaryAnchor,
-              anchorBelow: anchors.secondaryAnchor ?? Offset.zero,
+              anchorAbove: primaryAnchor,
+              anchorBelow: secondaryAnchor,
               children: menus.asMap().entries.map((
                 MapEntry<int, PopupMenuItemData> entry,
               ) {

@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.ComponentInfo
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
 import androidx.core.app.ActivityCompat
@@ -59,6 +61,8 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
     private var requestNotificationCallback: (() -> Unit)? = null
 
     private val packages = mutableListOf<Package>()
+    private val chinaPackageCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    private val appGson = Gson()
 
     private val skipPrefixList = listOf(
         "com.google",
@@ -157,10 +161,33 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
                 result.success(true)
             }
 
+            "getWifiGatewayIP" -> {
+                result.success(getWifiGatewayIP())
+            }
+
             else -> {
                 result.notImplemented()
             }
         }
+    }
+
+    private fun getWifiGatewayIP(): String? {
+        val cm = GlobalState.application.getSystemService(ConnectivityManager::class.java) ?: return null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val networks = cm.allNetworks
+            for (network in networks) {
+                val caps = cm.getNetworkCapabilities(network) ?: continue
+                // Only look at WiFi networks (not VPN, not Cellular)
+                if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) continue
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+                val props = cm.getLinkProperties(network) ?: continue
+                val gateway = props.routes.firstOrNull { route ->
+                    route.isDefaultRoute && route.gateway != null
+                }?.gateway
+                return gateway?.hostAddress
+            }
+        }
+        return null
     }
 
     private fun handleGetPackageIcon(call: MethodCall, result: Result) {
@@ -235,15 +262,19 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
 
     private suspend fun getPackagesToJson(): String {
         return withContext(Dispatchers.Default) {
-            Gson().toJson(getPackages())
+            appGson.toJson(getPackages())
         }
     }
 
     private suspend fun getChinaPackageNames(): String {
         return withContext(Dispatchers.Default) {
             val packages: List<String> =
-                getPackages().map { it.packageName }.filter { isChinaPackage(it) }
-            Gson().toJson(packages)
+                getPackages().map { it.packageName }.filter { pkgName ->
+                    val pkg = getPackages().find { it.packageName == pkgName }
+                    val cacheKey = "${pkgName}:${pkg?.lastUpdateTime ?: 0}"
+                    chinaPackageCache.getOrPut(cacheKey) { isChinaPackage(pkgName) }
+                }
+            appGson.toJson(packages)
         }
     }
 

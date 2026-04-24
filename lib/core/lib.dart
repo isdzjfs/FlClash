@@ -17,13 +17,26 @@ class CoreLib extends CoreHandlerInterface {
 
   @override
   Future<String> preload() async {
-    final res = await service?.init();
-    if (res?.isEmpty != true) {
-      return res ?? '';
+    commonPrint.log('[CoreLib] preload() start');
+    if (service == null) {
+      commonPrint.log('[CoreLib] preload() service is null!');
+      return 'Service not available';
     }
-    _connectedCompleter.complete(true);
-    final syncRes = await service?.syncState(appController.sharedState);
-    return syncRes ?? '';
+    commonPrint.log('[CoreLib] preload() calling service.init()...');
+    final res = await service!.init();
+    commonPrint.log('[CoreLib] preload() init result: "$res"');
+    if (res.isNotEmpty) {
+      commonPrint.log('[CoreLib] preload() init failed with: "$res"');
+      return res;
+    }
+    if (!_connectedCompleter.isCompleted) {
+      _connectedCompleter.complete(true);
+      commonPrint.log('[CoreLib] preload() completer completed');
+    }
+    commonPrint.log('[CoreLib] preload() calling syncState...');
+    final syncRes = await service!.syncState(appController.sharedState);
+    commonPrint.log('[CoreLib] preload() syncState result: "$syncRes"');
+    return syncRes;
   }
 
   factory CoreLib() {
@@ -38,6 +51,7 @@ class CoreLib extends CoreHandlerInterface {
 
   @override
   Future<bool> shutdown(_) async {
+    commonPrint.log('[CoreLib] shutdown() called, completer.isCompleted=${_connectedCompleter.isCompleted}');
     if (!_connectedCompleter.isCompleted) {
       return false;
     }

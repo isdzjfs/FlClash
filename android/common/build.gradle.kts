@@ -39,6 +39,8 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core)
     implementation(libs.gson)
+    api(libs.coroutines.core)
+    api(libs.coroutines.android)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics.ndk)
     implementation(libs.firebase.analytics)

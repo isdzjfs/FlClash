@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:fl_clash/core/core.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/plugins/app.dart';
+import 'package:fl_clash/plugins/service.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/widgets/dialog.dart';
@@ -20,6 +21,7 @@ class AppController {
   late final BuildContext _context;
   late final WidgetRef _ref;
   bool isAttach = false;
+  bool _disableMobileAutoStartUntilRestart = false;
 
   static AppController? _instance;
 
@@ -33,8 +35,17 @@ class AppController {
   Future<void> attach(BuildContext context, WidgetRef ref) async {
     _context = context;
     _ref = ref;
+    _disableMobileAutoStartUntilRestart = false;
     await _init();
     isAttach = true;
+  }
+
+  bool get disableMobileAutoStartUntilRestart {
+    return _disableMobileAutoStartUntilRestart;
+  }
+
+  void disableMobileAutoStartForSession() {
+    _disableMobileAutoStartUntilRestart = true;
   }
 }
 
@@ -152,7 +163,7 @@ extension InitControllerExt on AppController {
     if (status == true) {
       await updateStatus(true, isInit: true);
     } else {
-      await applyProfile(force: true);
+      await applyProfile(force: true, silence: true);
     }
   }
 
@@ -428,7 +439,6 @@ extension ProxiesControllerExt on AppController {
 
   Future<void> updateGroups() async {
     try {
-      commonPrint.log('updateGroups');
       _ref.read(groupsProvider.notifier).value = await retry(
         task: () async {
           final sortType = _ref.read(
@@ -449,6 +459,8 @@ extension ProxiesControllerExt on AppController {
           );
         },
         retryIf: (res) => res.isEmpty,
+        maxAttempts: 10,
+        delay: const Duration(milliseconds: 500),
       );
     } catch (e) {
       commonPrint.log('updateGroups error: $e');
@@ -553,7 +565,14 @@ extension SetupControllerExt on AppController {
     _ref.read(requestsProvider.notifier).value = FixedList(500);
   }
 
-  Future<void> updateStatus(bool isStart, {bool isInit = false}) async {
+  Future<void> updateStatus(
+    bool isStart, {
+    bool isInit = false,
+    bool isManualStop = false,
+  }) async {
+    if (!isStart && isManualStop) {
+      disableMobileAutoStartForSession();
+    }
     if (isStart) {
       if (!isInit) {
         final res = await tryStartCore(true);
@@ -563,16 +582,34 @@ extension SetupControllerExt on AppController {
         if (!_ref.read(initProvider)) {
           return;
         }
-        await globalState.handleStart([updateRunTime, updateTraffic]);
+        final started = await globalState.handleStart([
+          updateRunTime,
+          updateTraffic,
+        ]);
+        if (!started) {
+          await handleUnexpectedStop(message: appLocalizations.disconnected);
+          return;
+        }
         applyProfileDebounce(force: true, silence: true);
       } else {
         globalState.needInitStatus = false;
+        var startFailed = false;
         await applyProfile(
           force: true,
           preloadInvoke: () async {
-            await globalState.handleStart([updateRunTime, updateTraffic]);
+            final started = await globalState.handleStart([
+              updateRunTime,
+              updateTraffic,
+            ]);
+            if (!started) {
+              startFailed = true;
+              await handleUnexpectedStop(message: appLocalizations.disconnected);
+            }
           },
         );
+        if (startFailed) {
+          return;
+        }
       }
     } else {
       await globalState.handleStop();
@@ -581,6 +618,52 @@ extension SetupControllerExt on AppController {
       _ref.read(totalTrafficProvider.notifier).value = Traffic();
       _ref.read(runTimeProvider.notifier).value = null;
       addCheckIp();
+    }
+  }
+
+  Future<void> handleUnexpectedStop({
+    String? message,
+    bool notify = true,
+  }) async {
+    final currentStatus = _ref.read(coreStatusProvider);
+    final wasStarted =
+        globalState.startTime != null || _ref.read(runTimeProvider) != null;
+    if (!wasStarted && currentStatus == CoreStatus.disconnected) {
+      return;
+    }
+    final realMessage = message?.trim().isNotEmpty == true
+        ? message!.trim()
+        : appLocalizations.disconnected;
+    commonPrint.log(
+      '[Controller] handleUnexpectedStop() message="$realMessage", currentStatus=$currentStatus',
+      logLevel: LogLevel.warning,
+    );
+    if (system.isAndroid && !_disableMobileAutoStartUntilRestart) {
+      commonPrint.log(
+        '[Controller] handleUnexpectedStop() disable mobile auto-start for this session',
+      );
+      disableMobileAutoStartForSession();
+    }
+    globalState.startTime = null;
+    globalState.resetServiceHealthTracking();
+    globalState.stopUpdateTasks();
+    _ref.read(trafficsProvider.notifier).clear();
+    _ref.read(totalTrafficProvider.notifier).value = Traffic();
+    _ref.read(runTimeProvider.notifier).value = null;
+    _ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
+    addCheckIp();
+    try {
+      await coreController.shutdown(false);
+    } catch (e, s) {
+      commonPrint.log(
+        '[Controller] handleUnexpectedStop() shutdown error: $e, $s',
+        logLevel: LogLevel.warning,
+      );
+    }
+    if (notify &&
+        _context.mounted &&
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _context.showNotifier(realMessage);
     }
   }
 
@@ -651,7 +734,7 @@ extension SetupControllerExt on AppController {
   Future<void> applyProfile({
     bool silence = false,
     bool force = false,
-    VoidCallback? preloadInvoke,
+    FutureOr<void> Function()? preloadInvoke,
   }) async {
     if (!force && !await needSetup()) {
       return;
@@ -730,7 +813,7 @@ extension SetupControllerExt on AppController {
     return res;
   }
 
-  Future<void> _setupConfig([VoidCallback? preloadInvoke]) async {
+  Future<void> _setupConfig([FutureOr<void> Function()? preloadInvoke]) async {
     commonPrint.log('setup ===>');
     var profile = _ref.read(currentProfileProvider);
     final nextProfile = await profile?.checkAndUpdateAndCopy();
@@ -782,19 +865,25 @@ extension CoreControllerExt on AppController {
   }
 
   Future<void> _connectCore() async {
+    commonPrint.log('[Controller] _connectCore() start');
     _ref.read(coreStatusProvider.notifier).value = CoreStatus.connecting;
     final result = await Future.wait([
       coreController.preload(),
       Future.delayed(Duration(milliseconds: 300)),
     ]);
     final String message = result[0];
+    commonPrint.log('[Controller] _connectCore() preload result: "$message"');
     if (message.isNotEmpty) {
+      commonPrint.log(
+        '[Controller] _connectCore() FAILED, setting disconnected',
+      );
       _ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
       if (_context.mounted) {
         _context.showNotifier(message);
       }
       return;
     }
+    commonPrint.log('[Controller] _connectCore() SUCCESS, setting connected');
     _ref.read(coreStatusProvider.notifier).value = CoreStatus.connected;
   }
 
@@ -818,6 +907,7 @@ extension CoreControllerExt on AppController {
   }
 
   Future<void> restartCore([bool start = false]) async {
+    commonPrint.log('[Controller] restartCore() start, start=$start');
     _ref.read(coreStatusProvider.notifier).value = CoreStatus.disconnected;
     await coreController.shutdown(true);
     await _connectCore();
@@ -827,9 +917,13 @@ extension CoreControllerExt on AppController {
     } else {
       await applyProfile(force: true);
     }
+    commonPrint.log('[Controller] restartCore() done');
   }
 
   Future<bool> tryStartCore([bool start = false]) async {
+    commonPrint.log(
+      '[Controller] tryStartCore() isCompleted=${coreController.isCompleted}',
+    );
     if (coreController.isCompleted) {
       return false;
     }
@@ -1100,8 +1194,9 @@ extension CommonControllerExt on AppController {
     toPage(PageLabel.profiles);
   }
 
-  void updateStart() {
-    updateStatus(!_ref.read(isStartProvider));
+  void updateStart({bool isManual = false}) {
+    final nextIsStart = !_ref.read(isStartProvider);
+    updateStatus(nextIsStart, isManualStop: isManual && !nextIsStart);
   }
 
   void updateSpeedStatistics() {
@@ -1121,7 +1216,40 @@ extension CommonControllerExt on AppController {
     });
   }
 
-  void updateRunTime() {
+  Future<void> updateRunTime() async {
+    if (system.isAndroid && globalState.startTime != null) {
+      try {
+        final runtime = await service?.getRunTime();
+        if (runtime == null) {
+          final shouldDisconnect = globalState.registerRuntimeSyncFailure();
+          commonPrint.log(
+            '[Controller] updateRunTime() runtime unavailable, '
+            'startupGrace=${globalState.isWithinServiceStartupGrace}, '
+            'shouldDisconnect=$shouldDisconnect',
+            logLevel: LogLevel.warning,
+          );
+          if (shouldDisconnect) {
+            await handleUnexpectedStop(message: appLocalizations.disconnected);
+            return;
+          }
+        } else {
+          globalState.startTime = runtime;
+          globalState.markRuntimeSyncSuccess();
+        }
+      } catch (e, s) {
+        final shouldDisconnect = globalState.registerRuntimeSyncFailure();
+        commonPrint.log(
+          '[Controller] updateRunTime() error: $e, $s, '
+          'startupGrace=${globalState.isWithinServiceStartupGrace}, '
+          'shouldDisconnect=$shouldDisconnect',
+          logLevel: LogLevel.warning,
+        );
+        if (shouldDisconnect) {
+          await handleUnexpectedStop(message: appLocalizations.disconnected);
+          return;
+        }
+      }
+    }
     final startTime = globalState.startTime;
     if (startTime != null) {
       final startTimeStamp = startTime.millisecondsSinceEpoch;
@@ -1133,13 +1261,36 @@ extension CommonControllerExt on AppController {
   }
 
   Future<void> updateTraffic() async {
-    final onlyStatisticsProxy = _ref.read(
-      appSettingProvider.select((state) => state.onlyStatisticsProxy),
-    );
-    final traffic = await coreController.getTraffic(onlyStatisticsProxy);
-    _ref.read(trafficsProvider.notifier).addTraffic(traffic);
-    _ref.read(totalTrafficProvider.notifier).value = await coreController
-        .getTotalTraffic(onlyStatisticsProxy);
+    try {
+      final onlyStatisticsProxy = _ref.read(
+        appSettingProvider.select((state) => state.onlyStatisticsProxy),
+      );
+      final traffic = await coreController.getTraffic(onlyStatisticsProxy);
+      _ref.read(trafficsProvider.notifier).addTraffic(traffic);
+      _ref.read(totalTrafficProvider.notifier).value = await coreController
+          .getTotalTraffic(onlyStatisticsProxy);
+      globalState.markTrafficSyncSuccess();
+    } catch (e, s) {
+      commonPrint.log(
+        '[Controller] updateTraffic() error: $e, $s',
+        logLevel: LogLevel.warning,
+      );
+      if (system.isAndroid && globalState.startTime != null) {
+        final shouldDisconnect = globalState.registerTrafficSyncFailure();
+        commonPrint.log(
+          '[Controller] updateTraffic() health failure, '
+          'runtimeReady=${globalState.hasSuccessfulRuntimeSync}, '
+          'startupGrace=${globalState.isWithinServiceStartupGrace}, '
+          'shouldDisconnect=$shouldDisconnect',
+          logLevel: LogLevel.warning,
+        );
+        if (shouldDisconnect) {
+          await handleUnexpectedStop(message: appLocalizations.disconnected);
+        }
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<T?> loadingRun<T>(

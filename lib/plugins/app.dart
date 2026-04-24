@@ -91,6 +91,10 @@ class App {
       'value': value,
     });
   }
+
+  Future<String?> getWifiGatewayIP() async {
+    return await methodChannel.invokeMethod<String>('getWifiGatewayIP');
+  }
 }
 
 final app = system.isAndroid ? App() : null;

@@ -1,8 +1,6 @@
 package com.follow.clash.core
 
-import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.URL
 
 data object Core {
     private external fun startTun(
@@ -21,9 +19,11 @@ data object Core {
     )
 
     private fun parseInetSocketAddress(address: String): InetSocketAddress {
-        val url = URL("https://$address")
-
-        return InetSocketAddress(InetAddress.getByName(url.host), url.port)
+        // address format: "ip:port" or "[ipv6]:port"
+        val lastColon = address.lastIndexOf(':')
+        val host = address.substring(0, lastColon).removeSurrounding("[", "]")
+        val port = address.substring(lastColon + 1).toInt()
+        return InetSocketAddress.createUnresolved(host, port)
     }
 
     fun startTun(
@@ -38,7 +38,11 @@ data object Core {
             fd,
             object : TunInterface {
                 override fun protect(fd: Int) {
-                    protect(fd)
+                    try {
+                        protect(fd)
+                    } catch (e: Throwable) {
+                        android.util.Log.e("FlClash", "protect exception", e)
+                    }
                 }
 
                 override fun resolverProcess(
@@ -47,12 +51,17 @@ data object Core {
                     target: String,
                     uid: Int
                 ): String {
-                    return resolverProcess(
-                        protocol,
-                        parseInetSocketAddress(source),
-                        parseInetSocketAddress(target),
-                        uid,
-                    )
+                    return try {
+                        resolverProcess(
+                            protocol,
+                            parseInetSocketAddress(source),
+                            parseInetSocketAddress(target),
+                            uid,
+                        )
+                    } catch (e: Throwable) {
+                        android.util.Log.e("FlClash", "resolverProcess exception", e)
+                        ""
+                    }
                 }
             },
             stack,
@@ -78,7 +87,11 @@ data object Core {
             data,
             object : InvokeInterface {
                 override fun onResult(result: String?) {
-                    cb(result)
+                    try {
+                        cb(result)
+                    } catch (e: Throwable) {
+                        android.util.Log.e("FlClash", "invokeAction callback exception", e)
+                    }
                 }
             },
         )
@@ -93,7 +106,11 @@ data object Core {
             true -> setEventListener(
                 object : InvokeInterface {
                     override fun onResult(result: String?) {
-                        cb(result)
+                        try {
+                            cb(result)
+                        } catch (e: Throwable) {
+                            android.util.Log.e("FlClash", "callSetEventListener callback exception", e)
+                        }
                     }
                 },
             )
@@ -112,7 +129,11 @@ data object Core {
             setupParamsString,
             object : InvokeInterface {
                 override fun onResult(result: String?) {
-                    cb(result)
+                    try {
+                        cb(result)
+                    } catch (e: Throwable) {
+                        android.util.Log.e("FlClash", "quickSetup callback exception", e)
+                    }
                 }
             },
         )

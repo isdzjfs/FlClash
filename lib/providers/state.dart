@@ -403,13 +403,21 @@ String realTestUrl(Ref ref, [String? testUrl]) {
 int? getDelay(Ref ref, {required String proxyName, String? testUrl}) {
   final currentTestUrl = ref.watch(realTestUrlProvider(testUrl));
   final proxyState = ref.watch(realSelectedProxyStateProvider(proxyName));
-  final delay = ref.watch(
-    delayDataSourceProvider.select((state) {
-      final delayMap =
-          state[proxyState.testUrl.takeFirstValid([currentTestUrl])];
-      return delayMap?[proxyState.proxyName];
-    }),
-  );
+  final delayMapDataSource = ref.watch(delayDataSourceProvider);
+
+  final targetUrl = proxyState.testUrl.takeFirstValid([currentTestUrl]);
+  final delayMap = delayMapDataSource[targetUrl];
+  var delay = delayMap?[proxyState.proxyName];
+
+  if (delay == null) {
+    // If not found with default URL, search in other URLs (e.g., from provider's health check)
+    for (final map in delayMapDataSource.values) {
+      if (map.containsKey(proxyState.proxyName)) {
+        delay = map[proxyState.proxyName];
+        break;
+      }
+    }
+  }
 
   return delay;
 }
@@ -622,7 +630,7 @@ SharedState sharedState(Ref ref) {
     stopText: appLocalizations.stop,
     crashlytics: crashlytics,
     stopTip: appLocalizations.stopVpn,
-    startTip: appLocalizations.startVpn,
+    startTip: '',
     setupParams: SetupParams(selectedMap: selectedMap, testUrl: testUrl),
     vpnOptions: VpnOptions(
       enable: vpnSetting.enable,

@@ -8,6 +8,7 @@ import com.follow.clash.plugins.TilePlugin
 import com.follow.clash.service.models.NotificationParams
 import com.google.gson.Gson
 import io.flutter.embedding.engine.FlutterEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -16,6 +17,10 @@ import kotlinx.coroutines.sync.withLock
 enum class RunState {
     START, PENDING, STOP
 }
+
+private const val DEFAULT_SYNC_STATE_TIMEOUT_MS = 5000L
+private const val SERVICE_START_WAIT_TIMEOUT_MS = 20000L
+private const val SERVICE_START_WAIT_INTERVAL_MS = 300L
 
 
 object State {
@@ -48,11 +53,11 @@ object State {
         action?.invoke()
     }
 
-    suspend fun handleSyncState() {
+    suspend fun handleSyncState(timeoutMillis: Long = DEFAULT_SYNC_STATE_TIMEOUT_MS) {
         runLock.withLock {
             try {
                 Service.bind()
-                runTime = Service.getRunTime()
+                runTime = Service.getRunTime(timeoutMillis)
                 val runState = when (runTime == 0L) {
                     true -> RunState.STOP
                     false -> RunState.START
@@ -62,6 +67,25 @@ object State {
                 runStateFlow.tryEmit(RunState.STOP)
             }
         }
+    }
+
+    suspend fun waitForStart(
+        timeoutMillis: Long = SERVICE_START_WAIT_TIMEOUT_MS,
+        syncTimeoutMillis: Long = DEFAULT_SYNC_STATE_TIMEOUT_MS
+    ): Boolean {
+        if (runTime != 0L) {
+            return true
+        }
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            handleSyncState(timeoutMillis = syncTimeoutMillis)
+            if (runTime != 0L) {
+                return true
+            }
+            delay(SERVICE_START_WAIT_INTERVAL_MS)
+        }
+        handleSyncState(timeoutMillis = syncTimeoutMillis)
+        return runTime != 0L
     }
 
     suspend fun handleStartServiceAction() {
@@ -130,7 +154,7 @@ object State {
     private suspend fun setupAndStart() {
         Service.bind()
         syncState()
-        GlobalState.application.showToast(sharedState.startTip)
+//        GlobalState.application.showToast(sharedState.startTip)
         val initParams = mutableMapOf<String, Any>()
         initParams["home-dir"] = GlobalState.application.filesDir.path
         initParams["version"] = android.os.Build.VERSION.SDK_INT
@@ -161,7 +185,14 @@ object State {
                     val options = sharedState.vpnOptions ?: return@launch
                     appPlugin?.let {
                         it.prepare(options.enable) {
-                            runTime = Service.startService(options, runTime)
+                            val nextRunTime = Service.startService(options, runTime)
+                            if (nextRunTime == 0L) {
+                                runTime = 0L
+                                GlobalState.log("State.startService failed: runtime unavailable")
+                                runStateFlow.tryEmit(RunState.STOP)
+                                return@prepare
+                            }
+                            runTime = nextRunTime
                             runStateFlow.tryEmit(RunState.START)
                         }
                     } ?: run {
@@ -169,7 +200,13 @@ object State {
                         if (intent != null) {
                             return@launch
                         }
-                        runTime = Service.startService(options, runTime)
+                        val nextRunTime = Service.startService(options, runTime)
+                        if (nextRunTime == 0L) {
+                            runTime = 0L
+                            GlobalState.log("State.startService failed: runtime unavailable")
+                            return@launch
+                        }
+                        runTime = nextRunTime
                         runStateFlow.tryEmit(RunState.START)
                     }
                 } finally {

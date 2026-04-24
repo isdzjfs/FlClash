@@ -411,8 +411,12 @@ class _ListHeaderState extends State<ListHeader> {
   Future<void> _delayTest() async {
     if (isLock) return;
     isLock = true;
-    await delayTest(widget.group.all, widget.group.testUrl);
-    isLock = false;
+    try {
+      await delayTest(widget.group.all, widget.group.testUrl);
+      await groupDelayTest(groupName, widget.group.type, widget.group.testUrl);
+    } finally {
+      isLock = false;
+    }
   }
 
   void _handleChange(String groupName) {

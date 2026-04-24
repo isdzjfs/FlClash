@@ -1,3 +1,4 @@
+export 'current_node.dart';
 export 'intranet_ip.dart';
 export 'network_detection.dart';
 export 'network_speed.dart';

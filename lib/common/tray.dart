@@ -80,7 +80,7 @@ class Tray {
     final startMenuItem = MenuItem.checkbox(
       label: trayState.isStart ? appLocalizations.stop : appLocalizations.start,
       onClick: (_) async {
-        appController.updateStart();
+        appController.updateStart(isManual: true);
       },
       checked: false,
     );

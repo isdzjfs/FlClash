@@ -13,10 +13,16 @@ class CommonPrint {
     return _instance!;
   }
 
-  void log(String? text, {LogLevel logLevel = LogLevel.info}) {
+  void log(String? text, {LogLevel logLevel = LogLevel.debug}) {
     final payload = '[APP] $text';
     debugPrint(payload);
     if (!appController.isAttach) {
+      return;
+    }
+    final currentLogLevel = appController.config.patchClashConfig.logLevel;
+    var currentIdx = currentLogLevel.index;
+    if (currentLogLevel == LogLevel.dns) currentIdx = LogLevel.info.index;
+    if (logLevel.index < currentIdx) {
       return;
     }
     appController.addLog(Log.app(payload).copyWith(logLevel: logLevel));

@@ -70,6 +70,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "action_tun": MessageLookupByLibrary.simpleMessage("虚拟网卡"),
     "action_view": MessageLookupByLibrary.simpleMessage("显示/隐藏"),
     "add": MessageLookupByLibrary.simpleMessage("添加"),
+    "addGatewayAddress": MessageLookupByLibrary.simpleMessage("添加网关地址"),
     "addProfile": MessageLookupByLibrary.simpleMessage("添加配置"),
     "addRule": MessageLookupByLibrary.simpleMessage("添加规则"),
     "addedOriginRules": MessageLookupByLibrary.simpleMessage("附加到原始规则"),
@@ -107,6 +108,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoRun": MessageLookupByLibrary.simpleMessage("自动运行"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage("应用打开时自动运行"),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage("自动设置系统DNS"),
+    "autoStartOnMobileData": MessageLookupByLibrary.simpleMessage("移动数据自动开启"),
+    "autoStartOnMobileDataDesc": MessageLookupByLibrary.simpleMessage(
+      "打开移动数据且未连接 WiFi 时自动启动 VPN 代理",
+    ),
+    "autoStopGatewayList": MessageLookupByLibrary.simpleMessage("自动断开的网关列表"),
+    "autoStopOnSpecificWifi": MessageLookupByLibrary.simpleMessage("特定网关自动断开"),
+    "autoStopOnSpecificWifiDesc": MessageLookupByLibrary.simpleMessage(
+      "连接到指定网关地址的网络后自动关闭 VPN 代理",
+    ),
     "autoUpdate": MessageLookupByLibrary.simpleMessage("自动更新"),
     "autoUpdateInterval": MessageLookupByLibrary.simpleMessage("自动更新间隔（分钟）"),
     "backup": MessageLookupByLibrary.simpleMessage("备份"),
@@ -335,6 +345,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "nameserverPolicy": MessageLookupByLibrary.simpleMessage("域名服务器策略"),
     "nameserverPolicyDesc": MessageLookupByLibrary.simpleMessage("指定对应域名服务器策略"),
     "network": MessageLookupByLibrary.simpleMessage("网络"),
+    "networkAutoControl": MessageLookupByLibrary.simpleMessage("网络自动控制"),
+    "networkAutoControlDesc": MessageLookupByLibrary.simpleMessage(
+      "根据网络类型自动控制VPN",
+    ),
     "networkDesc": MessageLookupByLibrary.simpleMessage("修改网络相关设置"),
     "networkDetection": MessageLookupByLibrary.simpleMessage("网络检测"),
     "networkException": MessageLookupByLibrary.simpleMessage("网络异常，请检查连接后重试"),
@@ -387,6 +401,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "password": MessageLookupByLibrary.simpleMessage("密码"),
     "paste": MessageLookupByLibrary.simpleMessage("粘贴"),
     "pleaseBindWebDAV": MessageLookupByLibrary.simpleMessage("请绑定WebDAV"),
+    "pleaseEnterGatewayAddress": MessageLookupByLibrary.simpleMessage(
+      "请输入网关地址 (如 192.168.1.1)",
+    ),
     "pleaseEnterScriptName": MessageLookupByLibrary.simpleMessage("请输入脚本名称"),
     "pleaseInputAdminPassword": MessageLookupByLibrary.simpleMessage(
       "请输入管理员密码",

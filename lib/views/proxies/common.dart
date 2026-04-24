@@ -41,6 +41,7 @@ Future<void> proxyDelayTest(Proxy proxy, [String? testUrl]) async {
   appController.setDelay(
     await coreController.getDelay(currentTestUrl, state.proxyName),
   );
+  appController.updateGroupsDebounce(const Duration(milliseconds: 200));
 }
 
 Future<void> delayTest(List<Proxy> proxies, [String? testUrl]) async {
@@ -70,6 +71,27 @@ Future<void> delayTest(List<Proxy> proxies, [String? testUrl]) async {
     await Future.wait(batchDelayProxies);
   }
   appController.addSortNum();
+  appController.updateGroupsDebounce(const Duration(milliseconds: 200));
+}
+
+Future<void> groupDelayTest(
+  String groupName,
+  GroupType groupType, [
+  String? testUrl,
+]) async {
+  if (!groupType.isComputedSelected) {
+    return;
+  }
+  final url = appController.getRealTestUrl(testUrl);
+
+  // Set all proxies in group to loading state
+  final group = appController.groups.firstWhere((g) => g.name == groupName);
+  for (final proxy in group.all) {
+    appController.setDelay(Delay(url: url, name: proxy.name, value: 0));
+  }
+
+  await coreController.testGroupDelay(url, groupName);
+  appController.updateGroupsDebounce(const Duration(milliseconds: 200));
 }
 
 double getScrollToSelectedOffset({

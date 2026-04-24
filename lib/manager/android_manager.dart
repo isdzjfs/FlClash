@@ -55,6 +55,7 @@ class _AndroidContainerState extends ConsumerState<AndroidManager>
 
   @override
   void onServiceCrash(String message) {
+    commonPrint.log('[AndroidManager] onServiceCrash() message="$message"');
     coreEventManager.sendEvent(
       CoreEvent(type: CoreEventType.crash, data: message),
     );

@@ -476,5 +476,14 @@
   "restoreOnlyConfig": "Restore configuration files only",
   "restoreAllData": "Restore all data",
   "addProfile": "Add Profile",
-  "delayTest": "Delay Test"
+  "delayTest": "Delay Test",
+  "autoStartOnMobileData": "Auto start on mobile data",
+  "autoStartOnMobileDataDesc": "Auto start VPN when mobile data is enabled and WiFi is disconnected",
+  "autoStopOnSpecificWifi": "Auto stop on specific Gateway",
+  "autoStopOnSpecificWifiDesc": "Auto stop VPN when connected to a network with a specific gateway address",
+  "autoStopGatewayList": "Gateway addresses to auto stop",
+  "addGatewayAddress": "Add Gateway Address",
+  "pleaseEnterGatewayAddress": "Please enter Gateway Address (e.g. 192.168.1.1)",
+  "networkAutoControl": "Network auto control",
+  "networkAutoControlDesc": "Auto control VPN based on network type"
 }
