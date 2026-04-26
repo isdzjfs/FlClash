@@ -88,7 +88,7 @@ enum Mode { rule, global, direct }
 
 enum ViewMode { mobile, laptop, desktop }
 
-enum LogLevel { debug, info, warning, error, silent, dns }
+enum LogLevel { debug, info, info2, warning, error, silent, dns }
 
 extension LogLevelExt on LogLevel {
   Color? get color {
@@ -96,6 +96,7 @@ extension LogLevelExt on LogLevel {
       LogLevel.silent => Colors.grey.shade700,
       LogLevel.debug => Colors.grey.shade400,
       LogLevel.info => null,
+      LogLevel.info2 => Colors.blueAccent.darken(),
       LogLevel.warning => Colors.orangeAccent.darken(),
       LogLevel.error => Colors.redAccent,
       LogLevel.dns => Colors.lightBlue,

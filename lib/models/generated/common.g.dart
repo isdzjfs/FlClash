@@ -120,6 +120,7 @@ Map<String, dynamic> _$LogToJson(_Log instance) => <String, dynamic>{
 const _$LogLevelEnumMap = {
   LogLevel.debug: 'debug',
   LogLevel.info: 'info',
+  LogLevel.info2: 'info2',
   LogLevel.warning: 'warning',
   LogLevel.error: 'error',
   LogLevel.silent: 'silent',
