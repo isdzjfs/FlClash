@@ -40,7 +40,7 @@ class NetworkObserveModule(private val service: Service) : Module() {
     private val debounceScope = CoroutineScope(Dispatchers.Default)
     private var debounceJob: Job? = null
     private companion object {
-        const val DEBOUNCE_MS = 500L
+        const val DEBOUNCE_MS = 200L
     }
 
     private val request = NetworkRequest.Builder().apply {
@@ -173,25 +173,34 @@ class NetworkObserveModule(private val service: Service) : Module() {
 
     private fun applyNetworkUpdate(allowClearDns: Boolean = false) {
         try {
-        val prioritizedNetworks = prioritizedNetworks()
-        val dnsList = prioritizedNetworks
-            .firstOrNull { it.value.dnsList.isNotEmpty() }
-            ?.value
-            ?.dnsList
-            ?.map { x -> x.asSocketAddressText(53) }
-            ?: if (allowClearDns) {
-                emptyList()
-            } else {
-                preDnsList
+            val prioritizedNetworks = prioritizedNetworks()
+            val dnsList = prioritizedNetworks
+                .firstOrNull { it.value.dnsList.isNotEmpty() }
+                ?.value
+                ?.dnsList
+                ?.map { x -> x.asSocketAddressText(53) }
+                ?: if (allowClearDns) {
+                    emptyList()
+                } else {
+                    preDnsList
+                }
+            
+            val networks = prioritizedNetworks.map { it.key }
+            val activeNetworkChanged = preUnderlyingNetworks.firstOrNull() != networks.firstOrNull()
+            val dnsChanged = dnsList != preDnsList
+
+            if (!dnsChanged && !activeNetworkChanged) {
+                updateUnderlyingNetworks(prioritizedNetworks)
+                return
             }
-        if (dnsList == preDnsList) {
+
+            if (dnsChanged) {
+                preDnsList = dnsList
+                Core.updateDNS(dnsList.toSet().joinToString(","))
+            }
+            
+            Core.invokeAction("{\"id\":\"reset-on-network-change\",\"method\":\"resetConnections\",\"data\":null}") {}
             updateUnderlyingNetworks(prioritizedNetworks)
-            return
-        }
-        preDnsList = dnsList
-        Core.updateDNS(dnsList.toSet().joinToString(","))
-        Core.invokeAction("{\"id\":\"reset-on-network-change\",\"method\":\"resetConnections\",\"data\":null}") {}
-        updateUnderlyingNetworks(prioritizedNetworks)
         } catch (e: Exception) {
             com.follow.clash.common.GlobalState.log("applyNetworkUpdate error: ${e.message}")
         }

@@ -285,6 +285,7 @@ class VpnService : SystemVpnService(), IBaseService,
         }
         Core.startTun(
             fd,
+            calculateTunMtu(options),
             protect = this::protect,
             resolverProcess = this::resolverProcess,
             options.stack,

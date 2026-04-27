@@ -459,8 +459,8 @@ extension ProxiesControllerExt on AppController {
           );
         },
         retryIf: (res) => res.isEmpty,
-        maxAttempts: 10,
-        delay: const Duration(milliseconds: 500),
+        maxAttempts: 3,
+        delay: const Duration(milliseconds: 200),
       );
     } catch (e) {
       commonPrint.log('updateGroups error: $e');
@@ -660,10 +660,12 @@ extension SetupControllerExt on AppController {
         logLevel: LogLevel.warning,
       );
     }
-    if (notify &&
-        _context.mounted &&
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      _context.showNotifier(realMessage);
+    if (notify && _context.mounted) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _context.showNotifier(realMessage);
+      } else if (system.isAndroid) {
+        app?.tip(realMessage);
+      }
     }
   }
 
@@ -1168,7 +1170,7 @@ extension StoreControllerExt on AppController {
   void savePreferencesDebounce() {
     debouncer.call(FunctionTag.savePreferences, () async {
       await preferences.saveConfig(config);
-    });
+    }, duration: const Duration(seconds: 2));
   }
 
   Future handleClear() async {

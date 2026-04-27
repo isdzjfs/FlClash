@@ -23,7 +23,7 @@ func init() {
 		maxFdCount = int(limit.Cur)
 	}
 
-	maxFdCount = maxFdCount / 4 * 3
+	maxFdCount = maxFdCount * 19 / 20
 }
 
 func ShouldBlockConnection() bool {

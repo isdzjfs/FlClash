@@ -16,7 +16,7 @@ class Debouncer {
     if (timer != null) {
       timer.cancel();
     }
-    _operations[tag] = Timer(duration ?? const Duration(milliseconds: 600), () {
+    _operations[tag] = Timer(duration ?? const Duration(milliseconds: 200), () {
       _operations[tag]?.cancel();
       _operations.remove(tag);
       Function.apply(func, args);
@@ -36,7 +36,7 @@ class Throttler {
     FunctionTag tag,
     Function func, {
     List<dynamic>? args,
-    Duration duration = const Duration(milliseconds: 600),
+    Duration duration = const Duration(milliseconds: 300),
     bool fire = false,
   }) {
     final timer = _operations[tag];

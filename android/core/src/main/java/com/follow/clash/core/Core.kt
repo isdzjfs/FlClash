@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 data object Core {
     private external fun startTun(
         fd: Int,
+        mtu: Int,
         cb: TunInterface,
         stack: String,
         address: String,
@@ -28,6 +29,7 @@ data object Core {
 
     fun startTun(
         fd: Int,
+        mtu: Int,
         protect: (Int) -> Boolean,
         resolverProcess: (protocol: Int, source: InetSocketAddress, target: InetSocketAddress, uid: Int) -> String,
         stack: String,
@@ -36,6 +38,7 @@ data object Core {
     ) {
         startTun(
             fd,
+            mtu,
             object : TunInterface {
                 override fun protect(fd: Int) {
                     try {

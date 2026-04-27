@@ -19,6 +19,7 @@ import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
@@ -41,13 +42,12 @@ val Application.sharedState: SharedState
 private var lastToast: Toast? = null
 
 fun Application.showToast(text: String?) {
-    Handler(Looper.getMainLooper()).post {
+    GlobalState.launch(Dispatchers.Main) {
         lastToast?.cancel()
-        lastToast = Toast.makeText(this, text, Toast.LENGTH_LONG).apply {
+        lastToast = Toast.makeText(this@showToast, text, Toast.LENGTH_LONG).apply {
             show()
         }
     }
-
 }
 
 suspend fun PackageManager.getPackageIconPath(packageName: String): String =
