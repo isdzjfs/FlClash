@@ -164,12 +164,12 @@ object State {
             initParamsString,
             setupParamsString,
             onStarted = {
-                startService()
             },
             onResult = {
                 if (it.isNotEmpty()) {
                     GlobalState.application.showToast(it)
                 }
+                startService()
             },
         )
     }

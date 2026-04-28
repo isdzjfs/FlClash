@@ -105,6 +105,6 @@ DelayState computeProxyDelayState({
   );
   final currentDelayMap =
       delayMap[state.testUrl.takeFirstValid([testUrl])] ?? {};
-  final delay = currentDelayMap[state.proxyName];
+  final delay = currentDelayMap[proxyName] ?? currentDelayMap[state.proxyName];
   return DelayState(delay: delay ?? 0, group: state.group);
 }

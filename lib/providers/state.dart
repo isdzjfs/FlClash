@@ -407,11 +407,15 @@ int? getDelay(Ref ref, {required String proxyName, String? testUrl}) {
 
   final targetUrl = proxyState.testUrl.takeFirstValid([currentTestUrl]);
   final delayMap = delayMapDataSource[targetUrl];
-  var delay = delayMap?[proxyState.proxyName];
+  var delay = delayMap?[proxyName] ?? delayMap?[proxyState.proxyName];
 
   if (delay == null) {
     // If not found with default URL, search in other URLs (e.g., from provider's health check)
     for (final map in delayMapDataSource.values) {
+      if (map.containsKey(proxyName)) {
+        delay = map[proxyName];
+        break;
+      }
       if (map.containsKey(proxyState.proxyName)) {
         delay = map[proxyState.proxyName];
         break;
