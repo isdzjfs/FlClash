@@ -94,7 +94,7 @@ const (
 	asyncTestGroupDelayMethod      Method = "asyncTestGroupDelay"
 	getConnectionsMethod           Method = "getConnections"
 	closeConnectionsMethod         Method = "closeConnections"
-	resetConnectionsMethod         Method = "resetConnectionsMethod"
+	resetConnectionsMethod         Method = "resetConnections"
 	closeConnectionMethod          Method = "closeConnection"
 	getExternalProvidersMethod     Method = "getExternalProviders"
 	getExternalProviderMethod      Method = "getExternalProvider"

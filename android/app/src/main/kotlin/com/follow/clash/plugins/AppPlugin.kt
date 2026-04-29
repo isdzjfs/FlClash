@@ -141,13 +141,15 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
 
             "getPackages" -> {
                 scope.launch {
-                    result.success(getPackagesToJson())
+                    val json = getPackagesToJson()
+                    withContext(Dispatchers.Main) { result.success(json) }
                 }
             }
 
             "getChinaPackageNames" -> {
                 scope.launch {
-                    result.success(getChinaPackageNames())
+                    val json = getChinaPackageNames()
+                    withContext(Dispatchers.Main) { result.success(json) }
                 }
             }
 
@@ -194,11 +196,11 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
         scope.launch {
             val packageName = call.argument<String>("packageName")
             if (packageName == null) {
-                result.success("")
+                withContext(Dispatchers.Main) { result.success("") }
                 return@launch
             }
             val path = GlobalState.application.packageManager.getPackageIconPath(packageName)
-            result.success(path)
+            withContext(Dispatchers.Main) { result.success(path) }
         }
     }
 
@@ -266,12 +268,12 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
 
     private suspend fun getChinaPackageNames(): String {
         return withContext(Dispatchers.Default) {
+            val allPackages = getPackages()
             val packages: List<String> =
-                getPackages().map { it.packageName }.filter { pkgName ->
-                    val pkg = getPackages().find { it.packageName == pkgName }
-                    val cacheKey = "${pkgName}:${pkg?.lastUpdateTime ?: 0}"
-                    chinaPackageCache.getOrPut(cacheKey) { isChinaPackage(pkgName) }
-                }
+                allPackages.filter { pkg ->
+                    val cacheKey = "${pkg.packageName}:${pkg.lastUpdateTime}"
+                    chinaPackageCache.getOrPut(cacheKey) { isChinaPackage(pkg.packageName) }
+                }.map { it.packageName }
             appGson.toJson(packages)
         }
     }

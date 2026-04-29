@@ -8,10 +8,12 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
+	"github.com/metacubex/mihomo/hub"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/observable"
 	"github.com/metacubex/mihomo/common/utils"
@@ -357,10 +359,7 @@ func handleCloseConnections() bool {
 
 func closeConnections() {
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		err := c.Close()
-		if err != nil {
-			return false
-		}
+		_ = c.Close()
 		return true
 	})
 }
@@ -368,8 +367,46 @@ func closeConnections() {
 func handleResetConnections() bool {
 	runLock.Lock()
 	defer runLock.Unlock()
+	log.Info2ln("[FLClash] handleResetConnections triggered: resetting DNS and flushing active connections")
 	resolver.ResetConnection()
+	closeConnections()
+
+	if currentConfig != nil {
+		// Capture current group selections
+		selectedMap := getCurrentSelectedMap()
+
+		log.Info2ln("[FLClash] Re-applying configuration to tear down and recreate proxy multiplexers")
+		newConfig, err := executor.ParseWithPath(filepath.Join(constant.Path.HomeDir(), "config.yaml"))
+		if err == nil {
+			// Preserve dynamic runtime overrides
+			newConfig.General = currentConfig.General
+			currentConfig = newConfig
+
+			hub.ApplyConfig(currentConfig)
+			patchSelectGroup(selectedMap)
+			updateListeners()
+			log.Info2ln("[FLClash] Proxy multiplexers flushed successfully")
+		} else {
+			log.Errorln("[FLClash] Failed to re-parse config during network switch: %v", err)
+		}
+	}
 	return true
+}
+
+func getCurrentSelectedMap() map[string]string {
+	selectedMap := make(map[string]string)
+	for name, proxy := range tunnel.ProxiesWithProviders() {
+		outbound, ok := proxy.(*adapter.Proxy)
+		if !ok {
+			continue
+		}
+		group, ok := outbound.ProxyAdapter.(outboundgroup.ProxyGroup)
+		if !ok {
+			continue
+		}
+		selectedMap[name] = group.Now()
+	}
+	return selectedMap
 }
 
 func handleCloseConnection(connectionId string) bool {

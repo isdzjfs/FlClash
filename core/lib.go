@@ -155,20 +155,27 @@ func handleStartTun(callback unsafe.Pointer, fd int, mtu int, stack, address, dn
 func handleUpdateDns(value string) {
 	go func() {
 		log.Infoln("[DNS] updateDns %s", value)
-		dns.UpdateSystemDNS(strings.Split(value, ","))
+		var dnsList []string
+		for _, addr := range strings.Split(value, ",") {
+			addr = strings.TrimSpace(addr)
+			if addr != "" {
+				dnsList = append(dnsList, addr)
+			}
+		}
+		dns.UpdateSystemDNS(dnsList)
 		dns.FlushCacheWithDefaultResolver()
 	}()
 }
 
 func (result ActionResult) send() {
+	if result.Method != messageMethod {
+		defer releaseObject(result.callback)
+	}
 	data, err := result.Json()
 	if err != nil {
 		return
 	}
 	invokeResult(result.callback, string(data))
-	if result.Method != messageMethod {
-		releaseObject(result.callback)
-	}
 }
 
 func nextHandle(action *Action, result ActionResult) bool {
@@ -213,13 +220,16 @@ func startTUN(callback unsafe.Pointer, fd C.int, mtu C.int, stackChar, addressCh
 //export quickSetup
 func quickSetup(callback unsafe.Pointer, initParamsChar *C.char, setupParamsChar *C.char) {
 	go func() {
+		defer releaseObject(callback)
 		initParamsString := takeCString(initParamsChar)
 		setupParamsString := takeCString(setupParamsChar)
 		if !handleInitClash(initParamsString) {
 			invokeResult(callback, "init failed")
 			return
 		}
+		runLock.Lock()
 		isRunning = true
+		runLock.Unlock()
 		message := handleSetupConfig([]byte(setupParamsString))
 		invokeResult(callback, message)
 	}()
@@ -227,7 +237,7 @@ func quickSetup(callback unsafe.Pointer, initParamsChar *C.char, setupParamsChar
 
 //export setEventListener
 func setEventListener(listener unsafe.Pointer) {
-	if eventListener != nil && listener != nil {
+	if eventListener != nil {
 		releaseObject(eventListener)
 	}
 	eventListener = listener
@@ -236,14 +246,12 @@ func setEventListener(listener unsafe.Pointer) {
 //export getTotalTraffic
 func getTotalTraffic(onlyStatisticsProxy bool) *C.char {
 	data := C.CString(handleGetTotalTraffic(onlyStatisticsProxy))
-	defer C.free(unsafe.Pointer(data))
 	return data
 }
 
 //export getTraffic
 func getTraffic(onlyStatisticsProxy bool) *C.char {
 	data := C.CString(handleGetTraffic(onlyStatisticsProxy))
-	defer C.free(unsafe.Pointer(data))
 	return data
 }
 

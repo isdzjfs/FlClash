@@ -39,13 +39,11 @@ fun CoroutineScope.moduleLoader(block: suspend ModuleLoaderScope.() -> Unit): Mo
         }
 
         override fun cancel() {
-            launch(Dispatchers.IO) {
-                job?.cancel()
-                mutex.withLock {
-                    modules.asReversed().forEach { it.uninstall() }
-                    modules.clear()
-                }
-            }
+            job?.cancel()
+            job = null
+            // Run synchronously — the calling service is about to stopSelf()
+            modules.asReversed().forEach { runCatching { it.uninstall() } }
+            modules.clear()
         }
     }
 }

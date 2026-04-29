@@ -4,14 +4,29 @@
 #include <malloc.h>
 #include <cstring>
 
+#include <pthread.h>
+
 static JavaVM *global_vm;
 
 static jclass c_string;
 static jmethodID m_new_string;
 static jmethodID m_get_bytes;
 
+static pthread_key_t jni_thread_key;
+
+static void detach_current_thread(void *value) {
+    JavaVM *vm = global_vm;
+    if (vm != nullptr) {
+        JNIEnv *env;
+        if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) == JNI_OK) {
+            vm->DetachCurrentThread();
+        }
+    }
+}
+
 void initialize_jni(JavaVM *vm, JNIEnv *env) {
     global_vm = vm;
+    pthread_key_create(&jni_thread_key, detach_current_thread);
 
     c_string = reinterpret_cast<jclass>(new_global(find_class("java/lang/String")));
     m_new_string = find_method(c_string, "<init>", "([B)V");
@@ -57,19 +72,18 @@ void jni_attach_thread(scoped_jni *jni) {
     JavaVM *vm = global_java_vm();
     if (vm->GetEnv(reinterpret_cast<void **>(&jni->env), JNI_VERSION_1_6) == JNI_OK) {
         jni->require_release = 0;
-        return;
+    } else {
+        if (vm->AttachCurrentThread(&jni->env, nullptr) != JNI_OK) {
+            abort();
+        }
+        pthread_setspecific(jni_thread_key, (void *) 1);
+        jni->require_release = 1;
     }
-    if (vm->AttachCurrentThread(&jni->env, nullptr) != JNI_OK) {
-        abort();
-    }
-    jni->require_release = 1;
+    jni->env->PushLocalFrame(16);
 }
 
 void jni_detach_thread(const scoped_jni *env) {
-    JavaVM *vm = global_java_vm();
-    if (env->require_release) {
-        vm->DetachCurrentThread();
-    }
+    env->env->PopLocalFrame(nullptr);
 }
 
 void release_string(char **str) {

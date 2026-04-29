@@ -195,10 +195,12 @@ class NetworkObserveModule(private val service: Service) : Module() {
             }
 
             if (dnsChanged) {
+                com.follow.clash.common.GlobalState.log("Network changed, updating DNS: $dnsList")
                 preDnsList = dnsList
                 Core.updateDNS(dnsList.toSet().joinToString(","))
             }
             
+            com.follow.clash.common.GlobalState.log("Invoking resetConnections from applyNetworkUpdate")
             Core.invokeAction("{\"id\":\"reset-on-network-change\",\"method\":\"resetConnections\",\"data\":null}") {}
             updateUnderlyingNetworks(prioritizedNetworks)
         } catch (e: Exception) {
